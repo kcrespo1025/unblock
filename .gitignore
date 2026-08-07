@@ -1,0 +1,8 @@
+node_modules/
+.vite/
+*.log
+Thumbs.db
+.DS_Store
+desktop.ini
+Extra/
+special/Underground/WaveSurvival/

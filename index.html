@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/webp" href="WebLogo/Kmoon.webp">
+    <link rel="icon" type="image/webp" sizes="208x208" href="WebLogo/Kmoon.webp">
+    <link rel="apple-touch-icon" href="WebLogo/Kmoon.webp">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TheFreedomZone</title>
+    <meta name="title" content="TheFreedomZone">
+    <meta name="description" content="Play unbl*cked games like Crazy Cattle 3D and DriveMad on TheFreedomZone. Fast, free, no downloads—perfect for school or home.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://genizymath.github.io/">
+    <meta property="og:title" content="TheFreedomZone">
+    <meta property="og:description" content="Play unbl*cked games like Crazy Cattle 3D and DriveMad on TheFreedomZone. Fast, free, no downloads—perfect for school or home.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://genizymath.github.io/">
+    <meta name="twitter:title" content="TheFreedomZone">
+    <meta name="twitter:description" content="Play unbl*cked games like Crazy Cattle 3D and DriveMad on TheFreedomZone. Fast, free, no downloads—perfect for school or home.">
+    <meta name="keywords" content="unblocked games, games for school, browser games, chromebook games, no download games, html5 games, free unblocked games, thefreedomzone, fun games at school, crazy cattle 3d, play crazy cattle 3d, crazy cattle 3d unblocked, crazy cattle, crazy cattle unblocked, play crazy cattle, crazy cattle online, crazy cattle 3d online">
+    <link rel="stylesheet" href="styles/style.css">
+</head>
+<body class="dark-mode">
+    <header>
+        <div class="header-content">
+            <a class="logo" href="index.html" style="text-decoration: none; color: inherit; display: flex; align-items: center;">
+                <img src="WebLogo/Kmoon.webp" alt="TheFreedomZone" style="height: 40px; width: 40px; border-radius: 8px; margin-right: 10px;">
+                <span>TheFreedomZone</span>
+            </a>
+            <div class="search-container">
+                <label for="searchBar" class="sr-only">Search zones</label>
+                <input type="text" id="searchBar" placeholder="Search zones..." aria-label="Search zones" oninput="filterZones()">
+                <label for="sortOptions" class="sr-only">Sort zones</label>
+                <select id="sortOptions" aria-label="Sort zones" onchange="sortZones()">
+                    <option value="name">Name</option>
+                    <option value="id">ID (Date)</option>
+                    <option value="popular">Popular</option>
+                </select>
+            </div>
+            <div class="control-buttons">
+                <button id="randomZone" title="Random zone" aria-label="Random zone">&#x1F3B2;</button>
+                <span id="zoneCount" class="zone-count" title="Total zones">0</span>
+                <button id="settings">Settings</button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <details id="featuredZonesWrapper" open>
+            <summary id="allZonesSummary" style="font-size: 1.2rem; font-weight: bold; cursor: pointer;">Featured Zones</summary>
+            <div id="featuredZones" class="zone-container"></div>
+        </details>
+        <br><hr><br>
+        <details id="mustCheckZonesWrapper" open>
+            <summary id="mustCheckZonesSummary" style="font-size: 1.2rem; font-weight: bold; cursor: pointer;">Must Check Out</summary>
+            <div id="mustCheckZones" class="zone-container"></div>
+        </details>
+        <br><hr><br>
+        <details id="recentZonesWrapper" open>
+            <summary id="recentZonesSummary" style="font-size: 1.2rem; font-weight: bold; cursor: pointer;">Recently Played</summary>
+            <div id="recentZones" class="zone-container"></div>
+        </details>
+        <br><hr><br>
+        <details id="favZonesWrapper" open>
+            <summary id="favZonesSummary" style="font-size: 1.2rem; font-weight: bold; cursor: pointer;">Favorites</summary>
+            <div id="favZones" class="zone-container"></div>
+        </details>
+        <br><hr><br>
+        <details id="allZonesWrapper" open>
+            <summary id="allSummary" style="font-size: 1.2rem; font-weight: bold; cursor: pointer;">All Zones</summary>
+            <div id="container">Loading...</div>
+        </details>
+    </main>
+    <div id="zoneViewer" role="dialog" aria-label="Game viewer">
+        <div class="zone-header">
+            <h3 id="zoneName">Zone</h3>
+            <div class="zone-controls">
+                <button id="zoneBack" title="Back to previous zone" aria-label="Back">&larr;</button>
+                <button id="zoneCopy" title="Copy link to this zone" aria-label="Copy link">&#x1F4CE;</button>
+                <button id="zoneExternal" title="Open in a new tab" aria-label="Open in new tab">&#x1F517;</button>
+                <button id="zoneFullscreen" title="Toggle fullscreen" aria-label="Toggle fullscreen">&#x26F6;</button>
+                <button id="zoneClose" title="Close" aria-label="Close viewer">&#x00D7;</button>
+            </div>
+        </div>
+        <div id="viewerLoading" class="viewer-loading" aria-label="Loading">
+            <div class="spinner"></div>
+            <p>Loading zone...</p>
+        </div>
+        <iframe id="zoneFrame" title="Game" allow="fullscreen; autoplay; encrypted-media; pointer-lock" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-pointer-lock allow-downloads"></iframe>
+    </div>
+    <div id="popupOverlay">
+        <div class="popup">
+            <div class="popup-header">
+                <h3 id="popupTitle">Title</h3>
+                <button id="popupClose" onclick="closePopup()">×</button>
+            </div>
+            <div id="popupBody">
+                Content will be here
+            </div>
+        </div>
+    </div>
+    <footer>
+        <div class="footer-links">
+            <a href="#" onclick="showContact(); return false;">Contact</a>
+            <a href="#" onclick="loadPrivacy(); return false;">Privacy Policy</a>
+            <a href="javascript:saveData()">Export Data</a>
+            <label for="importData" style="color: var(--primary-color); cursor: pointer;">Import Data</label>
+            <input type="file" id="importData" style="display: none;" onchange="loadData(event)">
+        </div>
+    </footer>
+
+    <script src="javascript/index.js"></script>
+</body>
+</html>

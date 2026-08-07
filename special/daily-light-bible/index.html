@@ -1,0 +1,36 @@
+<!DOCTYPE html><html lang="en"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="assets/index-DcEbAJHD.css" data-rsc-css-href="assets/index-DcEbAJHD.css" data-precedence="vite-rsc/importer-resources"/><link rel="modulepreload" href="assets/layout-segment-context-CfvyzhPx.js" crossorigin=""/><link rel="modulepreload" href="assets/rolldown-runtime-S-ySWqyJ.js" crossorigin=""/><link rel="modulepreload" href="assets/index-B_f9Cfz_.js" crossorigin=""/><link rel="modulepreload" href="assets/framework-DjPHiq1u.js" crossorigin=""/><link rel="modulepreload" href="assets/page-CauEjbYn.js" crossorigin=""/><title>Daily Light — Bible Study That Rewards You</title><meta name="description" content="Build a daily Bible-study habit, earn coins, unlock cosmetics, and make your Bible feel like your own."/><link rel="shortcut icon" href="favicon.svg"/><link rel="icon" href="favicon.svg"/><meta name="codex-preview" content="development"/><script>self.__VINEXT_RSC_PARAMS__={}</script><script>self.__VINEXT_RSC_NAV__={"pathname":"/","searchParams":[]}</script><link rel="modulepreload" href="assets/index-B_f9Cfz_.js" />
+</head><body><main class="app-shell loading-screen" aria-label="Loading Daily Light"><div class="loading-mark">✦</div></main><script>
+(function () {
+  if (window.__dlbOffline) return;
+  window.__dlbOffline = true;
+  var realFetch = window.fetch.bind(window);
+  var savedPromise = realFetch('api/app.html', { cache: 'no-store' }).then(function (r) {
+    if (!r.ok) return null;
+    return r.json();
+  }).catch(function () { return null; });
+  function respond(data, ok) {
+    var status = ok ? 200 : (data && data.status ? data.status : 404);
+    return new Response(JSON.stringify(data || { error: 'Offline data unavailable.' }), {
+      status: status,
+      headers: { 'content-type': 'application/json' }
+    });
+  }
+  window.fetch = function (input, init) {
+    var url = typeof input === 'string' ? input : (input && input.url) || '';
+    if (url.indexOf('/api/app') === -1) return realFetch(input, init);
+    var isPost = !!(init && init.method === 'POST');
+    if (isPost) return Promise.resolve(respond({ error: 'This action needs an internet connection.' }, false));
+    var mode = 'bootstrap';
+    var m = url.match(/[?&]mode=([^&]+)/);
+    if (m) mode = decodeURIComponent(m[1]);
+    if (mode === 'community') return Promise.resolve(respond({ posts: [] }, true));
+    if (mode === 'moderation') return Promise.resolve(respond({ error: 'Moderation is not available in this offline copy.' }, false));
+    if (mode === 'bible') return Promise.resolve(respond({ error: 'Bible text is not included in this offline copy.' }, false));
+    return savedPromise.then(function (s) {
+      if (!s) return respond({ error: 'Offline data unavailable.' }, false);
+      return respond(mode === 'profile' ? { user: s.user } : s, true);
+    });
+  };
+})();
+</script>
+<script id="_R_">import("./assets/index-B_f9Cfz_.js")</script></body></html><script>self.__VINEXT_RSC_CHUNKS__=self.__VINEXT_RSC_CHUNKS__||[];self.__VINEXT_RSC_CHUNKS__.push("2:I[\"8c0f216c4604\",[],\"Children\",1]\n3:I[\"15c18cfaeeff\",[],\"LayoutSegmentProvider\",1]\n4:I[\"8c0f216c4604\",[],\"Slot\",1]\n5:I[\"593f344dc510\",[],\"RedirectBoundary\",1]\n:HL[\"assets/index-DcEbAJHD.css\",\"style\"]\n0:{\"__route\":\"route:/\",\"__interceptionContext\":null,\"__layoutIds\":[\"layout:/\"],\"__rootLayout\":\"/\",\"page:/\":\"$L1\",\"layout:/\":[[[[\"$\",\"link\",\"css:/assets/index-DcEbAJHD.css\",{\"rel\":\"stylesheet\",\"precedence\":\"vite-rsc/importer-resources\",\"href\":\"assets/index-DcEbAJHD.css\",\"data-rsc-css-href\":\"assets/index-DcEbAJHD.css\"}],\"$undefined\"],[\"$\",\"html\",null,{\"lang\":\"en\",\"children\":[\"$\",\"body\",null,{\"children\":[\"$\",\"$L2\",null,{}]}]}]],null],\"route:/\":[[[\"$\",\"meta\",null,{\"charSet\":\"utf-8\"}],[[\"$\",\"title\",\"0\",{\"children\":\"Daily Light — Bible Study That Rewards You\"}],[\"$\",\"meta\",\"1\",{\"name\":\"description\",\"content\":\"Build a daily Bible-study habit, earn coins, unlock cosmetics, and make your Bible feel like your own.\"}],[\"$\",\"link\",\"2\",{\"rel\":\"shortcut icon\",\"href\":\"favicon.svg\"}],[\"$\",\"link\",\"3\",{\"rel\":\"icon\",\"href\":\"favicon.svg\"}],[\"$\",\"meta\",\"4\",{\"name\":\"codex-preview\",\"content\":\"development\"}]],[[\"$\",\"meta\",\"0\",{\"name\":\"viewport\",\"content\":\"width=device-width, initial-scale=1\"}]]],[\"$\",\"$L3\",null,{\"segmentMap\":{\"children\":[]},\"children\":[\"$\",\"$L4\",null,{\"id\":\"layout:/\",\"parallelSlots\":\"$undefined\",\"children\":[\"$\",\"$L5\",null,{\"children\":[\"$\",\"$L3\",null,{\"segmentMap\":{\"children\":[]},\"children\":[\"$\",\"$L4\",null,{\"id\":\"page:/\"}]}]}]}]}]],\"__layoutFlags\":{\"layout:/\":\"s\"},\"__artifactCompatibility\":{\"schemaVersion\":1,\"graphVersion\":\"app-route-graph:4uhn5s1wvoptc\",\"deploymentVersion\":\"792cf4bf-ae39-4154-8199-88e44565785b\",\"appElementsSchemaVersion\":1,\"rscPayloadSchemaVersion\":1,\"rootBoundaryId\":\"/\",\"renderEpoch\":null}}\n")</script><script>self.__VINEXT_RSC_CHUNKS__=self.__VINEXT_RSC_CHUNKS__||[];self.__VINEXT_RSC_CHUNKS__.push("6:I[\"6efdf509a785\",[],\"default\",1]\n1:[\"$\",\"$L6\",null,{\"params\":\"$@7\",\"searchParams\":\"$@8\"}]\n7:{}\n8:{}\n")</script><script>self.__VINEXT_RSC_DONE__=true</script>
