@@ -14,6 +14,7 @@ let zones = [];
 let popularityData = {};
 const featuredContainer = document.getElementById('featuredZones');
 const mustCheckContainer = document.getElementById('mustCheckZones');
+const openSourceProgramsContainer = document.getElementById('openSourcePrograms');
 const recentContainer = document.getElementById('recentZones');
 const favContainer = document.getElementById('favZones');
 let zoneHistory = [];
@@ -120,11 +121,28 @@ async function listZones() {
             { name: "Zomblox", cover: "special/games/covers/883.png", url: "special/games/883.html" },
         ];
         localGames.forEach((game, i) => zones.push({ id: -1001 - i, ...game }));
+        try {
+            if (typeof harvestLocalGames !== 'undefined') {
+                harvestLocalGames.forEach((game, i) => zones.push({ id: -1039 - i, ...game }));
+            }
+            if (typeof harvestExternalGames !== 'undefined') {
+                harvestExternalGames.forEach((game, i) => zones.push({ id: -2001 - i, ...game }));
+            }
+            if (typeof harvestFalloutGames !== 'undefined') {
+                harvestFalloutGames.forEach((game, i) => zones.push({ id: -3001 - i, ...game }));
+            }
+        } catch (error) {
+            console.error(error);
+        }
+        if (typeof openSourceCatalog !== 'undefined') {
+            openSourceCatalog.forEach((entry, i) => zones.push({ id: -4001 - i, ...entry }));
+        }
         zones[0].featured = true; // always gonna be the discord
         await fetchPopularity();
         sortZones();
         renderRecent();
         renderFavorites();
+        renderOpenSourcePrograms();
         updateZoneCount();
         const search = new URLSearchParams(window.location.search);
         const id = search.get('id');
@@ -200,7 +218,13 @@ function createZoneItem(file) {
     img.alt = file.name;
     img.loading = "lazy";
     img.className = "lazy-zone-img";
-    img.onerror = () => { img.src = "Logo.png"; };
+    img.onerror = () => {
+        if (file.fallbackCover && img.src !== file.fallbackCover) {
+            img.src = file.fallbackCover;
+            return;
+        }
+        img.src = "WebLogo/Kmoon.webp";
+    };
     zoneItem.appendChild(img);
 
     if (file.mustCheck) {
@@ -276,7 +300,18 @@ function displayMustCheckZones(mustCheckZones) {
     } else {
         document.getElementById("mustCheckZonesSummary").textContent = `Must Check Out (${mustCheckZones.length})`;
     }
+
     attachLazyLoad('#mustCheckZones');
+}
+
+function renderOpenSourcePrograms() {
+    if (!openSourceProgramsContainer) return;
+    const programs = zones.filter(zone => zone.category === 'program');
+    openSourceProgramsContainer.innerHTML = "";
+    programs.forEach(program => openSourceProgramsContainer.appendChild(createZoneItem(program)));
+    document.getElementById("openSourceProgramsSummary").textContent =
+        `Open-Source Programs (${programs.length})`;
+    attachLazyLoad('#openSourcePrograms');
 }
 
 function displayZones(zones) {
@@ -383,6 +418,13 @@ async function openZone(file) {
         await openSmartZone(file);
         return;
     }
+    if (file.embed) {
+        openViewer(file.name);
+        zoneHistory.push(file);
+        currentZone = file;
+        loadZoneIntoFrame(file);
+        return;
+    }
     if (isExternalZone(file)) {
         window.open(url, "_blank", "noopener");
         return;
@@ -395,6 +437,7 @@ async function openZone(file) {
 
 function isExternalZone(file) {
     const url = getZoneURL(file);
+    if (file.embed) return false;
     if (file.external) return true;
     if (/^https:\/\/(www\.)?discord\.(gg|com)\//i.test(url)) return true;
     return /^https?:\/\//i.test(url) && !url.startsWith(htmlURL);
@@ -606,7 +649,7 @@ function filterZones() {
     const query = searchBar.value.toLowerCase();
     const filteredZones = zones.filter(zone => zone.name.toLowerCase().includes(query));
     const searching = query.length !== 0;
-    ["featuredZonesWrapper", "mustCheckZonesWrapper", "recentZonesWrapper", "favZonesWrapper"].forEach(id => {
+    ["featuredZonesWrapper", "mustCheckZonesWrapper", "openSourceProgramsWrapper", "recentZonesWrapper", "favZonesWrapper"].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         if (searching) {

@@ -1,0 +1,27 @@
+<style>*{background:#000;margin:20px auto;}#m{display:block}#pts{color:#0f0;max-width:fit-content;font-size:24px}</style><canvas id=m width=400 height=300></canvas><div id=pts>0</div><script>x=m.getContext("2d")
+aUni="▲",bUni="●"
+const rand=()=>Math.floor(304*Math.random())+48
+const isBet=(e,t,n)=>n>e&&n<t
+let u={x:0,y:250},d={x:rand(),y:48},v={show:!1,x:0}
+x.font="64px sans"
+load=()=>{x.textBaseline="top"
+x.clearRect(0,0,m.width,m.height)
+x.fillStyle="#aaa"
+x.fillText(aUni,u.x,u.y)
+x.fillStyle="#08f"
+x.fillText(bUni,d.x,d.y)
+v.show&&(x.strokeStyle="#f00",x.lineWidth=2,x.beginPath(),x.moveTo(v.x+24,0),x.lineTo(v.x+24,m.height-48),x.stroke())}
+hit=()=>{let e=u.x
+d.x=rand(),pts.innerText++,v.x=e,v.show=!0,setTimeout(()=>{v.show=!1,load()},500)
+a=new AudioContext,b=a.createOscillator()
+b.connect(a.destination)
+b.start()
+b.stop(a.currentTime + 0.05)}
+hK=(e)=>{switch(e.keyCode){case 37:case 65:u.x-=5
+break
+case 39:case 68:u.x+=5
+break
+case 38:case 87:isBet(d.x-10,d.x+10,u.x)&&hit()}load()}
+window.onkeydown=hK
+load()
+</script>

@@ -1,0 +1,44 @@
+<style>*{background:#000;margin:20px auto;}#c{display:block}#pts{color:#0f0;max-width:fit-content;font-size:24px}</style><canvas id=c width=400 height=300></canvas><div id=pts>0</div><script>g=c.getContext('2d')
+w=c.width
+h=c.height
+g.font='64px sans'
+a=new AudioContext
+document.addEventListener('keydown',()=>a.state!=='running'&&a.resume(),{once:true})
+G=h-1,PW=12,PH=12
+px=40
+py=G-PH
+pv=0
+air=0
+dx=2.5
+gV=.6
+jV=-15
+s=0
+sp={x:w,y:G-12,clr:0}
+loop=()=>{g.clearRect(0,0,w,h)
+g.fillStyle='#8f0'
+g.fillText('●',px,py)
+if(air){pv+=gV
+py+=pv
+if(py+PH>=G){py=G-PH
+pv=0
+air=0}}sp.x-=dx
+g.fillStyle='#f08'
+g.fillText('▲',sp.x,sp.y)
+if(!sp.clr&&sp.x+12<px){sp.clr=1
+pts.textContent++}else if(!air&&sp.x+12<px){a.resume().then(()=>{let b=a.createOscillator()
+b.connect(a.destination)
+b.start()
+b.stop(a.currentTime + 0.05)})
+sp.clr=1
+pts.textContent++}if(px<sp.x+12&&px+12>sp.x&&py<sp.y+12&&py+12>sp.y){py=G-PH
+pv=0
+air=0
+sp={x:w,y:G-12,clr:0}}if(sp.x<-12)sp={x:w,y:G-12,clr:0}
+requestAnimationFrame(loop)
+}
+window.onclick=()=>{if(!air){pv=jV
+air=1}}
+window.onkeydown=()=>{if(!air){pv=jV
+air=1}}
+loop()
+</script></html>

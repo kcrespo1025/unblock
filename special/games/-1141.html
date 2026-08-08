@@ -1,0 +1,45 @@
+<style>*{margin:auto;background:#000;image-rendering:pixelated}</style><canvas id=can style="display:block;height:min(100vh,calc(100vw*3/4));width:min(100vw,calc(100vh*4/3));aspect-ratio:4/3"></canvas><script>const cx=can.getContext`2d`
+const w=screen.width*2,h=screen.height*2,M=Math,Pe=performance
+const r=M.max(1,M.round(M.min(w,h)/320))
+H=r*75,W=r*100
+can.width=W
+can.height=H
+C=1000*r
+R=20*r
+let ps=[]
+for(let i=0;i<C;i++){const b=M.floor(M.random()*200)*4
+ps.push({x:M.random()*W,y:M.random()*H,vx:0,vy:0,b})
+}
+st=()=>{for(let i=0;i<ps.length;i++){const p=ps[i]
+let ax=0
+let ay=0
+for(let j=0;j<ps.length;j++){if(i===j)continue
+const q=ps[j]
+if(q.b!==p.b)continue
+let dx=q.x-p.x
+let dy=q.y-p.y
+dx-=W*M.round(dx/W)
+dy-=H*M.round(dy/H)
+const d2=dx*dx+dy*dy
+if(d2&&d2<R*R){if(d2<2){ax-=dx
+ay-=dy}else{const iv=1/M.sqrt(d2)
+ax+=dx*iv
+ay+=dy*iv}}}p.vx+=ax*(p.b/255)*0.1
+p.vy+=ay*(p.b/255)*0.1
+p.vx*=0.95
+p.vy*=0.95}for(const p of ps){p.x=(p.x+p.vx+W)%W
+p.y=(p.y+p.vy+H)%H}}
+dw=()=>{cx.clearRect(0,0,W,H)
+for(const p of ps){const hue=(p.b/255)*360
+cx.fillStyle=`hsl(${hue},100%,50%)`
+cx.fillRect(p.x,p.y,1,1)
+}
+}
+const S=()=>{let t=Pe.now(),c=0
+while(Pe.now()-t<120){c+=C;st()}
+return c}
+C=M.floor(C*(20000/S()))
+lp=()=>{st()
+dw()
+setTimeout(()=>{requestAnimationFrame(lp)},100)}
+lp()</script>
