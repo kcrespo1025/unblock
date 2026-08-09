@@ -20,7 +20,12 @@ const favContainer = document.getElementById('favZones');
 let zoneHistory = [];
 let currentZone = null;
 let currentFrameUrl = null;
-let favs = new Set(loadFromStorage(FAVS_KEY, []));
+const rawFavs = loadFromStorage(FAVS_KEY, []);
+let favs = new Set(Array.isArray(rawFavs) ? rawFavs : []);
+let zonesLoaded = false;
+let viewerLoadToken = 0;
+let lastFilterQuery = "";
+let filterTimer = null;
 
 function loadFromStorage(key, fallback) {
     try {
@@ -40,18 +45,22 @@ function saveToStorage(key, value) {
 
 async function listZones() {
     try {
-        let json;
+        let json = null;
         try {
-            const response = await fetch(zonesURL);
-            json = await response.json();
-            saveToStorage(CACHE_KEY, json);
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 10000);
+            const response = await fetch(zonesURL, { signal: controller.signal });
+            clearTimeout(timer);
+            if (response.ok) {
+                json = await response.json();
+                saveToStorage(CACHE_KEY, json);
+            } else {
+                json = loadFromStorage(CACHE_KEY, null);
+            }
         } catch (fetchError) {
-            const cached = loadFromStorage(CACHE_KEY, null);
-            if (!cached) throw fetchError;
-            json = cached;
+            json = loadFromStorage(CACHE_KEY, null);
         }
-        zones = json;
-        zones = zones.filter(zone => !/^\[!\]\s*comments$/i.test(zone.name || "") && zone.id !== 596);
+        zones = Array.isArray(json) ? json.filter(zone => !/^\[!\]\s*comments$/i.test(zone.name || "") && zone.id !== 596) : [];
         const discordZone = zones.find(zone => zone.url === "https://discord.gg/D4c9VFYWyU");
         if (discordZone) {
             discordZone.name = "TheFreedomZoneServer";
@@ -137,29 +146,54 @@ async function listZones() {
         if (typeof openSourceCatalog !== 'undefined') {
             openSourceCatalog.forEach((entry, i) => zones.push({ id: -4001 - i, ...entry }));
         }
-        zones[0].featured = true; // always gonna be the discord
-        await fetchPopularity();
+        if (discordZone) discordZone.featured = true;
+        zonesLoaded = true;
         sortZones();
         renderRecent();
         renderFavorites();
         renderOpenSourcePrograms();
         updateZoneCount();
+        if (searchBar.value.trim()) filterZones();
+        if (window.resourceSaver && window.resourceSaver.isOn()) {
+            popularityData[0] = 0;
+        } else {
+            fetchPopularity().then(() => {
+                if (sortOptions.value === 'popular') sortZones();
+            });
+        }
         const search = new URLSearchParams(window.location.search);
         const id = search.get('id');
         if (id) {
             const zone = zones.find(zone => zone.id + '' == id + '');
             if (zone) {
-                openZone(zone);
+                if (zone.fallbackUrl) {
+                    openViewer(zone.name);
+                    zoneHistory.push(zone);
+                    currentZone = zone;
+                    loadZoneIntoFrame({ ...zone, url: zone.fallbackUrl }, zone);
+                } else if (isExternalZone(zone) && !zone.embed) {
+                    toast(`${zone.name} is an external site — your browser may block auto-open. Open it directly from the list.`);
+                    window.open(getZoneURL(zone), "_blank", "noopener");
+                } else {
+                    openZone(zone);
+                }
+            } else {
+                toast("Zone not found for that link");
             }
         }
     } catch (error) {
         console.error(error);
-        container.innerHTML = `Error loading zones: ${error}`;
+        if (!container.innerHTML || container.innerHTML === "Loading...") {
+            container.innerHTML = "Couldn't load the zone list. Check your connection and refresh.";
+        }
     }
 }
 async function fetchPopularity() {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
     try {
-        const response = await fetch("https://data.jsdelivr.com/v1/stats/packages/gh/freebuisness/html@main/files?period=year");
+        const response = await fetch("https://data.jsdelivr.com/v1/stats/packages/gh/freebuisness/html@main/files?period=year", { signal: controller.signal });
+        clearTimeout(timer);
         const data = await response.json();
         data.forEach(file => {
             const idMatch = file.name.match(/\/(\d+)\.html$/);
@@ -169,6 +203,7 @@ async function fetchPopularity() {
             }
         });
     } catch (error) {
+        clearTimeout(timer);
         popularityData[0] = 0;
     }
 }
@@ -180,23 +215,26 @@ function updateZoneCount() {
 
 function sortZones() {
     const sortBy = sortOptions.value;
-    if (sortBy === 'name') {
-        zones.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (sortBy === 'id') {
-        zones.sort((a, b) => a.id - b.id);
-    } else if (sortBy === 'popular') {
-        zones.sort((a, b) => (popularityData[b.id] || 0) - (popularityData[a.id] || 0));
+    const compare = {
+        name: (a, b) => (a.name || "").localeCompare(b.name || ""),
+        id: (a, b) => a.id - b.id,
+        popular: (a, b) => (popularityData[b.id] || 0) - (popularityData[a.id] || 0)
+    }[sortBy] || (() => 0);
+    zones.sort((a, b) => {
+        const pinnedA = a && a.id === -1 ? -1 : 0;
+        const pinnedB = b && b.id === -1 ? -1 : 0;
+        return pinnedA - pinnedB || compare(a, b) || a.id - b.id;
+    });
+    const featured = zones.filter(z => z && z.featured);
+    if (featured.length) displayFeaturedZones(featured);
+    const mustCheck = zones.filter(z => z && z.mustCheck);
+    if (mustCheck.length) displayMustCheckZones(mustCheck);
+    if (searchBar.value.trim()) {
+        lastFilterQuery = "";
+        filterZones();
+    } else {
+        displayZones(zones);
     }
-    zones.sort((a, b) => (a.id === -1 ? -1 : b.id === -1 ? 1 : 0));
-    if (featuredContainer.innerHTML === "") {
-        const featured = zones.filter(z => z.featured);
-        displayFeaturedZones(featured);
-    }
-    if (mustCheckContainer.innerHTML === "") {
-        const mustCheck = zones.filter(z => z.mustCheck);
-        displayMustCheckZones(mustCheck);
-    }
-    displayZones(zones);
 }
 
 function createZoneItem(file) {
@@ -214,16 +252,24 @@ function createZoneItem(file) {
     };
 
     const img = document.createElement("img");
-    img.dataset.src = file.cover.replace("{COVER_URL}", coverURL).replace("{HTML_URL}", htmlURL);
-    img.alt = file.name;
+    let coverSrc = (file.cover || "WebLogo/Kmoon.webp").replace("{COVER_URL}", coverURL).replace("{HTML_URL}", htmlURL);
+    if (window.resourceSaver && window.resourceSaver.isOn() && !coverSrc.startsWith("special/") && !coverSrc.startsWith("WebLogo/") && !coverSrc.startsWith("data:")) {
+        coverSrc = "WebLogo/Kmoon.webp";
+    }
+    img.dataset.src = coverSrc;
+    img.alt = file.name || "";
     img.loading = "lazy";
     img.className = "lazy-zone-img";
+    let coverTried = false;
+    const fallbackCover = "WebLogo/Kmoon.webp";
     img.onerror = () => {
-        if (file.fallbackCover && img.src !== file.fallbackCover) {
+        if (!coverTried && file.fallbackCover) {
+            coverTried = true;
             img.src = file.fallbackCover;
             return;
         }
-        img.src = "WebLogo/Kmoon.webp";
+        if (img.src.split("?")[0].split("#")[0] === new URL(fallbackCover, location.href).href) return;
+        img.src = fallbackCover;
     };
     zoneItem.appendChild(img);
 
@@ -246,7 +292,7 @@ function createZoneItem(file) {
     };
     zoneItem.appendChild(favButton);
     const button = document.createElement("button");
-    button.textContent = file.name + (file.external ? " ↗" : "");
+    button.textContent = (file.name || "Zone") + (file.external ? " ↗" : "");
     button.onclick = (event) => {
         event.stopPropagation();
         openZone(file);
@@ -256,24 +302,34 @@ function createZoneItem(file) {
     return zoneItem;
 }
 
-function attachLazyLoad(containerSelector) {
-    const lazyImages = document.querySelectorAll(containerSelector + ' img.lazy-zone-img');
-    const imageObserver = new IntersectionObserver((entries, observer) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const img = entry.target;
-                img.src = img.dataset.src;
-                img.classList.remove("lazy-zone-img");
-                observer.unobserve(img);
-            }
-        });
-    }, {
-        rootMargin: "100px",
-        threshold: 0.1
+const observedImgs = new Set();
+const lazyObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            const img = entry.target;
+            if (img.dataset.src) img.src = img.dataset.src;
+            img.classList.remove("lazy-zone-img");
+            observer.unobserve(img);
+            observedImgs.delete(img);
+        }
     });
+}, {
+    rootMargin: "100px",
+    threshold: 0.1
+});
 
-    lazyImages.forEach(img => {
-        imageObserver.observe(img);
+function attachLazyLoad(containerSelector) {
+    observedImgs.forEach(img => {
+        if (!document.contains(img)) {
+            lazyObserver.unobserve(img);
+            observedImgs.delete(img);
+        }
+    });
+    document.querySelectorAll(containerSelector + ' img.lazy-zone-img').forEach(img => {
+        if (!observedImgs.has(img)) {
+            observedImgs.add(img);
+            lazyObserver.observe(img);
+        }
     });
 }
 
@@ -285,7 +341,8 @@ function displayFeaturedZones(featuredZones) {
     if (featuredContainer.innerHTML === "") {
         featuredContainer.innerHTML = "No featured zones found.";
     } else {
-        document.getElementById("allZonesSummary").textContent = `Featured Zones (${featuredZones.length})`;
+        const summary = document.getElementById("allZonesSummary");
+        if (summary) summary.textContent = `Featured Zones (${featuredZones.length})`;
     }
     attachLazyLoad('#featuredZones');
 }
@@ -298,7 +355,8 @@ function displayMustCheckZones(mustCheckZones) {
     if (mustCheckContainer.innerHTML === "") {
         mustCheckContainer.innerHTML = "No zones found.";
     } else {
-        document.getElementById("mustCheckZonesSummary").textContent = `Must Check Out (${mustCheckZones.length})`;
+        const summary = document.getElementById("mustCheckZonesSummary");
+        if (summary) summary.textContent = `Must Check Out (${mustCheckZones.length})`;
     }
 
     attachLazyLoad('#mustCheckZones');
@@ -309,7 +367,8 @@ function renderOpenSourcePrograms() {
     const programs = zones.filter(zone => zone.category === 'program');
     openSourceProgramsContainer.innerHTML = "";
     programs.forEach(program => openSourceProgramsContainer.appendChild(createZoneItem(program)));
-    document.getElementById("openSourceProgramsSummary").textContent =
+    const summary = document.getElementById("openSourceProgramsSummary");
+    if (summary) summary.textContent =
         `Open-Source Programs (${programs.length})`;
     attachLazyLoad('#openSourcePrograms');
 }
@@ -323,14 +382,17 @@ function displayZones(zones) {
     if (container.innerHTML === "") {
         container.innerHTML = "No zones found.";
     } else {
-        document.getElementById("allSummary").textContent = `All Zones (${zones.length})`;
+        const summary = document.getElementById("allSummary");
+        if (summary) summary.textContent = `All Zones (${zones.length})`;
     }
     attachLazyLoad('#container');
 }
 
 function renderRecent() {
     let recent = loadFromStorage(RECENT_KEY, []);
-    recent = recent.map(e => (e && typeof e.file === 'object') ? e : { file: e, plays: 1 });
+    if (!Array.isArray(recent)) recent = [];
+    recent = recent.filter(e => e && typeof e.file === 'object' && e.file);
+    recent = recent.map(e => ({ file: e.file, plays: Number(e.plays) || 1 }));
     const merged = [];
     recent.forEach(e => {
         const key = e.file.url || (e.file.id + '');
@@ -356,7 +418,8 @@ function renderRecent() {
     if (recentContainer.innerHTML === "") {
         recentContainer.innerHTML = "Play some zones and they'll show up here.";
     } else {
-        document.getElementById("recentZonesSummary").textContent = `Recently Played (${merged.length})`;
+        const summary = document.getElementById("recentZonesSummary");
+        if (summary) summary.textContent = `Recently Played (${merged.length})`;
     }
     attachLazyLoad('#recentZones');
 }
@@ -370,14 +433,18 @@ function renderFavorites() {
     if (favContainer.innerHTML === "") {
         favContainer.innerHTML = "Tap the star on a zone to save it here.";
     } else {
-        document.getElementById("favZonesSummary").textContent = `Favorites (${favZones.length})`;
+        const summary = document.getElementById("favZonesSummary");
+        if (summary) summary.textContent = `Favorites (${favZones.length})`;
     }
     attachLazyLoad('#favZones');
 }
 
 function pushRecent(file) {
+    if (!file || typeof file !== 'object') return;
     let recent = loadFromStorage(RECENT_KEY, []);
-    recent = recent.map(e => (e && typeof e.file === 'object') ? e : { file: e, plays: 1 });
+    if (!Array.isArray(recent)) recent = [];
+    recent = recent.filter(e => e && typeof e.file === 'object' && e.file);
+    recent = recent.map(e => ({ file: e.file, plays: Number(e.plays) || 1 }));
     const key = file.url || (file.id + '');
     const existing = recent.find(e => (e.file.url || (e.file.id + '')) === key);
     if (existing) {
@@ -472,18 +539,19 @@ async function isReachable(url, timeout = 5000) {
     }
 }
 
-function loadZoneIntoFrame(file, recentFile) {
+function loadZoneIntoFrame(file, recentFile, recordRecent = true) {
+    const token = ++viewerLoadToken;
     const url = getZoneURL(file);
     const frame = document.getElementById('zoneFrame');
-    frame.onload = () => showLoading(false);
     frame.removeAttribute('srcdoc');
     if (url.startsWith(htmlURL)) {
-        loadHTMLIntoViewer(url);
+        loadHTMLIntoViewer(url, token);
     } else {
+        frame.onload = () => { if (token === viewerLoadToken) showLoading(false); };
         frame.src = url;
     }
     currentFrameUrl = url;
-    pushRecent(recentFile || file);
+    if (recordRecent) pushRecent(recentFile || file);
     showLoading(true);
 }
 
@@ -497,6 +565,7 @@ function openViewer(name) {
 function closeViewer() {
     const viewer = document.getElementById('zoneViewer');
     if (!viewer.classList.contains('open')) return;
+    viewerLoadToken++;
     const frame = document.getElementById('zoneFrame');
     frame.onload = null;
     frame.removeAttribute('srcdoc');
@@ -514,7 +583,7 @@ function goBack() {
         zoneHistory.pop();
         const prev = zoneHistory[zoneHistory.length - 1];
         currentZone = prev;
-        loadZoneIntoFrame(prev);
+        loadZoneIntoFrame(prev, null, false);
     } else {
         closeViewer();
     }
@@ -532,7 +601,7 @@ function toggleViewerFullscreen() {
 function copyZoneLink() {
     if (!currentZone) return;
     const id = currentZone.id;
-    const url = location.origin + location.pathname + '?id=' + id;
+    const url = location.href.split('?')[0].split('#')[0] + '?id=' + id;
     const done = () => toast(`Link copied for "${currentZone.name}"`);
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(done, () => fallbackCopy(url, done));
@@ -570,26 +639,37 @@ function openRandomZone() {
     toast(`🎲 ${file.name}`);
 }
 
-function loadHTMLIntoViewer(url) {
+function escapeHtml(text) {
+    return String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+const viewerPlaceholderDoc = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;background:#000;color:#fff;font-family:system-ui,sans-serif;height:100vh;display:grid;place-items:center}</style></head><body><p>Loading game...</p></body></html>';
+
+function loadHTMLIntoViewer(url, token) {
+    if (token === undefined) token = viewerLoadToken;
     const frame = document.getElementById('zoneFrame');
     frame.removeAttribute('src');
-    frame.srcdoc = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;background:#000;color:#fff;font-family:system-ui,sans-serif;height:100vh;display:grid;place-items:center}</style></head><body><p>Loading game...</p></body></html>';
+    frame.srcdoc = viewerPlaceholderDoc;
     fetch(url).then(response => {
         if (!response.ok) throw new Error('HTTP ' + response.status);
         return response.text();
     }).then(html => {
+        if (token !== viewerLoadToken) return;
         if (!/<base\b/i.test(html)) {
             const dir = url.replace(/\/[^/]*$/, '/');
-            html = html.replace(/<\/head>/i, '<base href="' + dir + '">$&');
+            html = html.replace(/<\/head>/i, '<base href="' + escapeHtml(dir) + '">$&');
         }
         frame.srcdoc = html;
+        showLoading(false);
     }).catch(error => {
+        if (token !== viewerLoadToken) return;
         const dash = url.indexOf('.html-');
         if (dash !== -1) {
-            loadHTMLIntoViewer(url.slice(0, dash + 5));
+            loadHTMLIntoViewer(url.slice(0, dash + 5), token);
             return;
         }
-        frame.srcdoc = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;background:#000;color:#fff;font-family:system-ui,sans-serif;height:100vh;display:grid;place-items:center}</style></head><body><p>Failed to load game: ' + error + '</p><p style="color:#888;font-size:12px">' + url + '</p></body></html>';
+        frame.srcdoc = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;background:#000;color:#fff;font-family:system-ui,sans-serif;height:100vh;display:grid;place-items:center}</style></head><body><p>Failed to load game: ' + escapeHtml(error) + '</p><p style="color:#888;font-size:12px">' + escapeHtml(url) + '</p></body></html>';
+        showLoading(false);
     });
 }
 
@@ -634,10 +714,11 @@ function showGameControls() {
 }
 
 function getZoneURL(file) {
+    if (!file) return "";
     if (file.url) {
         return file.url.replace("{COVER_URL}", coverURL).replace("{HTML_URL}", htmlURL);
     } else {
-        return "games/" + file.name
+        return "games/" + (file.name || String(file.id || "zone"))
             .replace(/ /g, '-')
             .toLowerCase()
             .replace(/[^a-z0-9-]/g, '')
@@ -646,8 +727,16 @@ function getZoneURL(file) {
 }
 
 function filterZones() {
-    const query = searchBar.value.toLowerCase();
-    const filteredZones = zones.filter(zone => zone.name.toLowerCase().includes(query));
+    clearTimeout(filterTimer);
+    filterTimer = setTimeout(applyFilter, 150);
+}
+
+function applyFilter() {
+    if (!zonesLoaded) return;
+    const query = (searchBar.value || "").trim().toLowerCase();
+    if (query === lastFilterQuery) return;
+    lastFilterQuery = query;
+    const filteredZones = zones.filter(zone => zone && zone.name && zone.name.toLowerCase().includes(query));
     const searching = query.length !== 0;
     ["featuredZonesWrapper", "mustCheckZonesWrapper", "openSourceProgramsWrapper", "recentZonesWrapper", "favZonesWrapper"].forEach(id => {
         const el = document.getElementById(id);
@@ -701,7 +790,7 @@ function loadData(event) {
         try {
             const parsedData = JSON.parse(localStorageData);
             for (let key in parsedData) {
-                localStorage.setItem(key, parsedData[key]);
+                try { localStorage.setItem(key, parsedData[key]); } catch (err) { }
             }
         } catch (error) {
         }
@@ -711,7 +800,8 @@ function loadData(event) {
                 document.cookie = cookie;
             });
         }
-        alert("Data loaded");
+        alert("Data loaded — refreshing to apply it");
+        location.reload();
     };
     reader.readAsText(file);
 }
@@ -765,14 +855,55 @@ if (settings) {
     settings.addEventListener('click', () => {
         document.getElementById('popupTitle').textContent = "Settings";
         const popupBody = document.getElementById('popupBody');
+        const saverOn = window.resourceSaver && window.resourceSaver.isOn();
         popupBody.innerHTML = `
         <button class="settings-button" onclick="darkMode()">Toggle Dark Mode</button>
         <br><br>
         <button class="settings-button" onclick="tabCloak()">Tab Cloak</button>
+        <br><br>
+        <button class="settings-button" id="saverToggle">Resource Saver: ${saverOn ? "ON" : "OFF"}</button>
+        <br><br>
+        <button class="settings-button" onclick="ownerGate()">Get Your Own Copy</button>
         <br>
         `;
+        const saverBtn = document.getElementById('saverToggle');
+        if (saverBtn) saverBtn.addEventListener('click', () => {
+            const on = window.resourceSaver.toggle();
+            toast(on ? "Resource Saver ON — lite covers & no popularity sync" : "Resource Saver OFF");
+            saverBtn.textContent = "Resource Saver: " + (on ? "ON" : "OFF");
+            displayZones(filteredZones ? filteredZones : zones);
+        });
         popupBody.contentEditable = false;
         document.getElementById('popupOverlay').style.display = "flex";
+    });
+}
+
+function ownerGate() {
+    document.getElementById('popupTitle').textContent = "Get Your Own Copy";
+    const popupBody = document.getElementById('popupBody');
+    popupBody.innerHTML = `
+        <p style="margin:0 0 12px">Enter the access code your owner shared with you.</p>
+        <input type="text" id="ownerPasscode" placeholder="Access code" style="width:100%;padding:0.5rem;margin-bottom:1rem;border:1px solid var(--card-border);border-radius:4px;background:var(--card-bg);color:var(--text-color);font-size:16px">
+        <button class="settings-button" id="ownerPassOk">Unlock Download</button>
+    `;
+    popupBody.contentEditable = false;
+    document.getElementById('popupOverlay').style.display = "flex";
+    const input = document.getElementById('ownerPasscode');
+    const btn = document.getElementById('ownerPassOk');
+    if (input) input.focus();
+    if (btn) btn.addEventListener('click', () => {
+        if (window.ownerDownload.tryPasscode(input ? input.value : "")) {
+            toast("Access granted — opening your copy");
+            const a = document.createElement("a");
+            a.href = window.ownerDownload.url();
+            a.target = "_blank";
+            a.rel = "noopener";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } else {
+            toast("Wrong access code");
+        }
     });
 }
 
@@ -828,21 +959,30 @@ function closePopup() {
     document.getElementById('popupOverlay').style.display = "none";
 }
 
-document.getElementById('zoneClose').addEventListener('click', closeViewer);
-document.getElementById('zoneBack').addEventListener('click', goBack);
-document.getElementById('zoneFullscreen').addEventListener('click', toggleViewerFullscreen);
-document.getElementById('zoneCopy').addEventListener('click', copyZoneLink);
-document.getElementById('zoneExternal').addEventListener('click', openExternalTab);
-document.getElementById('randomZone').addEventListener('click', openRandomZone);
+const zoneCloseBtn = document.getElementById('zoneClose');
+const zoneBackBtn = document.getElementById('zoneBack');
+const zoneFullscreenBtn = document.getElementById('zoneFullscreen');
+const zoneCopyBtn = document.getElementById('zoneCopy');
+const zoneExternalBtn = document.getElementById('zoneExternal');
+const randomZoneBtn = document.getElementById('randomZone');
+if (zoneCloseBtn) zoneCloseBtn.addEventListener('click', closeViewer);
+if (zoneBackBtn) zoneBackBtn.addEventListener('click', goBack);
+if (zoneFullscreenBtn) zoneFullscreenBtn.addEventListener('click', toggleViewerFullscreen);
+if (zoneCopyBtn) zoneCopyBtn.addEventListener('click', copyZoneLink);
+if (zoneExternalBtn) zoneExternalBtn.addEventListener('click', openExternalTab);
+if (randomZoneBtn) randomZoneBtn.addEventListener('click', openRandomZone);
 document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && document.getElementById('zoneViewer').classList.contains('open')) {
+    const viewerOpen = document.getElementById('zoneViewer').classList.contains('open');
+    if (event.key === 'Escape' && viewerOpen) {
         closeViewer();
     }
     if (event.key === 'Escape' && document.activeElement === searchBar) {
         searchBar.value = "";
         filterZones();
     }
-    if (event.key === '/' && document.activeElement !== searchBar) {
+    const target = event.target;
+    const isTyping = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+    if (event.key === '/' && !isTyping && document.activeElement !== searchBar) {
         event.preventDefault();
         searchBar.focus();
     }
