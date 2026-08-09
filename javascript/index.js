@@ -773,7 +773,7 @@ if (settings) {
             const on = window.resourceSaver.toggle();
             toast(on ? "Resource Saver ON — lite covers & no popularity sync" : "Resource Saver OFF");
             saverBtn.textContent = "Resource Saver: " + (on ? "ON" : "OFF");
-            displayZones(filteredZones ? filteredZones : zones);
+            sortZones();
         });
         popupBody.contentEditable = false;
         document.getElementById('popupOverlay').style.display = "flex";
