@@ -3,11 +3,10 @@
 (function () {
     "use strict";
 
-    // ---- passcode gate (owner shares this with friends/payers) ----
-    const OWNER_PASSCODE = "kmoon2026";
     // Replace with whatever copy you actually hand out (zip, repo archive, etc.)
     const COPY_URL = "https://github.com/kcrespo1025/unblock/archive/refs/heads/main.zip";
-    const PASS_KEY = "fz_pass_ok";
+    // Access is proven by successfully decrypting javascript/zones.bin (see gate.js).
+    // The passcode itself is never stored in this file.
 
     // ---- keyboard / context-menu deterrents ----
     document.addEventListener("contextmenu", function (e) {
@@ -61,17 +60,16 @@
         }
     };
 
-    // ---- gated download for friends/payers ----
+    // ---- gated download for friends/payers (site is already unlocked at this point) ----
     window.ownerDownload = {
         unlocked: function () {
-            try { return sessionStorage.getItem(PASS_KEY) === "1"; } catch (e) { return false; }
+            try { return window.fzGate && window.fzGate.isUnlocked(); } catch (e) { return false; }
         },
         tryPasscode: function (code) {
-            const ok = String(code || "").trim() === OWNER_PASSCODE;
-            if (ok) {
-                try { sessionStorage.setItem(PASS_KEY, "1"); } catch (e) { }
+            if (window.fzGate) {
+                return window.fzGate.unlock(String(code || "").trim());
             }
-            return ok;
+            return Promise.resolve(false);
         },
         url: function () { return COPY_URL; }
     };

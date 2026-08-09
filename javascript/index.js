@@ -2,14 +2,12 @@ const container = document.getElementById('container');
 const searchBar = document.getElementById('searchBar');
 const sortOptions = document.getElementById('sortOptions');
 // https://www.jsdelivr.com/tools/purge
-const zonesURL = "https://cdn.jsdelivr.net/gh/freebuisness/assets@main/zones.json";
 const coverURL = "https://cdn.jsdelivr.net/gh/freebuisness/covers@main";
 const htmlURL = "https://cdn.jsdelivr.net/gh/freebuisness/html@main";
 const OFFICIAL_URL = "https://daily-light-bible.fisherrivar32.chatgpt.site/";
 const RECENT_KEY = "fz_recent";
 const FAVS_KEY = "fz_favs";
 const THEME_KEY = "fz_dark";
-const CACHE_KEY = "fz_zones_cache";
 let zones = [];
 let popularityData = {};
 const featuredContainer = document.getElementById('featuredZones');
@@ -45,108 +43,12 @@ function saveToStorage(key, value) {
 
 async function listZones() {
     try {
-        let json = null;
-        try {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 10000);
-            const response = await fetch(zonesURL, { signal: controller.signal });
-            clearTimeout(timer);
-            if (response.ok) {
-                json = await response.json();
-                saveToStorage(CACHE_KEY, json);
-            } else {
-                json = loadFromStorage(CACHE_KEY, null);
-            }
-        } catch (fetchError) {
-            json = loadFromStorage(CACHE_KEY, null);
+        const data = window.fzGate && window.fzGate.data();
+        if (!data || !Array.isArray(data.zones)) {
+            container.innerHTML = "Locked — no data loaded.";
+            return;
         }
-        zones = Array.isArray(json) ? json.filter(zone => !/^\[!\]\s*comments$/i.test(zone.name || "") && zone.id !== 596) : [];
-        const discordZone = zones.find(zone => zone.url === "https://discord.gg/D4c9VFYWyU");
-        if (discordZone) {
-            discordZone.name = "TheFreedomZoneServer";
-            discordZone.url = "https://discord.gg/y4naww23Y9";
-        }
-        zones.push({
-            id: -1,
-            name: "Forge Code",
-            cover: "Logo.png",
-            url: "special/Forge Code/Forge Code.html",
-            featured: true
-        });
-        zones.push({
-            id: -2,
-            name: "Underground",
-            cover: "special/Underground/LOGO.png",
-            url: "special/Underground/Underground.html?standalone=1",
-            featured: true
-        });
-        zones.push({
-            id: -3,
-            name: "Daily Light",
-            cover: "special/daily-light-bible/LOGO.webp",
-            url: OFFICIAL_URL,
-            fallbackUrl: "special/daily-light-bible/index.html",
-            featured: true,
-            mustCheck: true
-        });
-        const localGames = [
-            { name: "67 Clicker", cover: "special/games/covers/846.png", url: "special/games/846.html" },
-            { name: "Archers", cover: "special/games/covers/847.png", url: "special/games/847.html" },
-            { name: "Break It All", cover: "special/games/covers/848.png", url: "special/games/848.html" },
-            { name: "Case-Battle", cover: "special/games/covers/849.png", url: "special/games/849.html" },
-            { name: "Clash", cover: "special/games/covers/850.png", url: "special/games/850.html" },
-            { name: "Climb Hard", cover: "special/games/covers/851.png", url: "special/games/851.html" },
-            { name: "CS 2 Surf", cover: "special/games/covers/852.png", url: "special/games/852.html" },
-            { name: "Dash.io", cover: "special/games/covers/853.png", url: "special/games/853.html" },
-            { name: "Diep io", cover: "special/games/covers/854.png", url: "special/games/854.html" },
-            { name: "Doblox 2", cover: "special/games/covers/855.png", url: "special/games/855.html" },
-            { name: "Doblox: Chameleon", cover: "special/games/covers/856.png", url: "special/games/856.html" },
-            { name: "Dune Dash", cover: "special/games/covers/857.png", url: "special/games/857.html" },
-            { name: "Bloons supermonkey", cover: "special/games/covers/858.png", url: "special/games/858.html" },
-            { name: "FNF 3D", cover: "special/games/covers/859.png", url: "special/games/859.html" },
-            { name: "Forest Survival", cover: "special/games/covers/860.png", url: "special/games/860.html" },
-            { name: "Fragzone", cover: "special/games/covers/861.png", url: "special/games/861.html" },
-            { name: "Gta Mods", cover: "special/games/covers/862.png", url: "special/games/862.html" },
-            { name: "Gta", cover: "special/games/covers/863.png", url: "special/games/863.html" },
-            { name: "Hole Battle", cover: "special/games/covers/864.png", url: "special/games/864.html" },
-            { name: "Keyboard Escape", cover: "special/games/covers/865.png", url: "special/games/865.html" },
-            { name: "Knife Hit", cover: "special/games/covers/866.png", url: "special/games/866.html" },
-            { name: "Ks2 Teams", cover: "special/games/covers/867.png", url: "special/games/867.html" },
-            { name: "level 2", cover: "special/games/covers/868.png", url: "special/games/868.html" },
-            { name: "Lobby Battle", cover: "special/games/covers/869.png", url: "special/games/869.html" },
-            { name: "Mr.Dude", cover: "special/games/covers/870.png", url: "special/games/870.html" },
-            { name: "Obby", cover: "special/games/covers/871.png", url: "special/games/871.html" },
-            { name: "Only Up!", cover: "special/games/covers/872.png", url: "special/games/872.html" },
-            { name: "Race 2", cover: "special/games/covers/873.png", url: "special/games/873.html" },
-            { name: "Raven 3D", cover: "special/games/covers/874.png", url: "special/games/874.html" },
-            { name: "Real Kart", cover: "special/games/covers/875.png", url: "special/games/875.html" },
-            { name: "Soccer 2026!", cover: "special/games/covers/876.png", url: "special/games/876.html" },
-            { name: "Super knife", cover: "special/games/covers/877.png", url: "special/games/877.html" },
-            { name: "Race", cover: "special/games/covers/878.png", url: "special/games/878.html" },
-            { name: "Tank Flow", cover: "special/games/covers/879.png", url: "special/games/879.html" },
-            { name: "Tap Goal", cover: "special/games/covers/880.png", url: "special/games/880.html" },
-            { name: "Wave 3D", cover: "special/games/covers/881.png", url: "special/games/881.html" },
-            { name: "Your Life Simulator", cover: "special/games/covers/882.png", url: "special/games/882.html" },
-            { name: "Zomblox", cover: "special/games/covers/883.png", url: "special/games/883.html" },
-        ];
-        localGames.forEach((game, i) => zones.push({ id: -1001 - i, ...game }));
-        try {
-            if (typeof harvestLocalGames !== 'undefined') {
-                harvestLocalGames.forEach((game, i) => zones.push({ id: -1039 - i, ...game }));
-            }
-            if (typeof harvestExternalGames !== 'undefined') {
-                harvestExternalGames.forEach((game, i) => zones.push({ id: -2001 - i, ...game }));
-            }
-            if (typeof harvestFalloutGames !== 'undefined') {
-                harvestFalloutGames.forEach((game, i) => zones.push({ id: -3001 - i, ...game }));
-            }
-        } catch (error) {
-            console.error(error);
-        }
-        if (typeof openSourceCatalog !== 'undefined') {
-            openSourceCatalog.forEach((entry, i) => zones.push({ id: -4001 - i, ...entry }));
-        }
-        if (discordZone) discordZone.featured = true;
+        zones = data.zones;
         zonesLoaded = true;
         sortZones();
         renderRecent();
@@ -891,8 +793,9 @@ function ownerGate() {
     const input = document.getElementById('ownerPasscode');
     const btn = document.getElementById('ownerPassOk');
     if (input) input.focus();
-    if (btn) btn.addEventListener('click', () => {
-        if (window.ownerDownload.tryPasscode(input ? input.value : "")) {
+    if (btn) btn.addEventListener('click', async () => {
+        const ok = await window.ownerDownload.tryPasscode(input ? input.value : "");
+        if (ok) {
             toast("Access granted — opening your copy");
             const a = document.createElement("a");
             a.href = window.ownerDownload.url();
@@ -988,4 +891,8 @@ document.addEventListener('keydown', (event) => {
     }
 });
 applySavedTheme();
-listZones();
+if (window.fzGate) {
+    window.fzGate.boot(() => listZones());
+} else {
+    listZones();
+}
