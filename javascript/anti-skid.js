@@ -5,8 +5,6 @@
 
     // Replace with whatever copy you actually hand out (zip, repo archive, etc.)
     const COPY_URL = "https://github.com/kcrespo1025/unblock/archive/refs/heads/main.zip";
-    // Access is proven by successfully decrypting javascript/zones.bin (see gate.js).
-    // The passcode itself is never stored in this file.
 
     // ---- keyboard / context-menu deterrents ----
     document.addEventListener("contextmenu", function (e) {
@@ -60,17 +58,10 @@
         }
     };
 
-    // ---- gated download for friends/payers (site is already unlocked at this point) ----
+    // ---- free download of the owner's copy ----
     window.ownerDownload = {
-        unlocked: function () {
-            try { return window.fzGate && window.fzGate.isUnlocked(); } catch (e) { return false; }
-        },
-        tryPasscode: function (code) {
-            if (window.fzGate) {
-                return window.fzGate.unlock(String(code || "").trim());
-            }
-            return Promise.resolve(false);
-        },
+        unlocked: function () { return true; },
+        tryPasscode: function () { return Promise.resolve(true); },
         url: function () { return COPY_URL; }
     };
 
@@ -85,7 +76,7 @@
         overlay.innerHTML =
             '<div><h2 style="margin:0 0 12px">Please don\u2019t inspect this site.</h2>' +
             '<p style="margin:0 0 16px;max-width:480px">TheFreedomZone is the work of its owner. ' +
-            "If you'd like your own copy, ask the owner for the access code.</p>" +
+            "If you'd like your own copy, grab it from the Settings menu.</p>" +
             '<button id="fz-devtools-ok" style="padding:8px 18px;cursor:pointer">Close</button></div>';
         document.body.appendChild(overlay);
         const btn = document.getElementById("fz-devtools-ok");

@@ -784,29 +784,21 @@ function ownerGate() {
     document.getElementById('popupTitle').textContent = "Get Your Own Copy";
     const popupBody = document.getElementById('popupBody');
     popupBody.innerHTML = `
-        <p style="margin:0 0 12px">Enter the access code your owner shared with you.</p>
-        <input type="text" id="ownerPasscode" placeholder="Access code" style="width:100%;padding:0.5rem;margin-bottom:1rem;border:1px solid var(--card-border);border-radius:4px;background:var(--card-bg);color:var(--text-color);font-size:16px">
-        <button class="settings-button" id="ownerPassOk">Unlock Download</button>
+        <p style="margin:0 0 12px">This index is free — grab your own copy.</p>
+        <button class="settings-button" id="ownerPassOk">Download Copy</button>
     `;
     popupBody.contentEditable = false;
     document.getElementById('popupOverlay').style.display = "flex";
-    const input = document.getElementById('ownerPasscode');
     const btn = document.getElementById('ownerPassOk');
-    if (input) input.focus();
-    if (btn) btn.addEventListener('click', async () => {
-        const ok = await window.ownerDownload.tryPasscode(input ? input.value : "");
-        if (ok) {
-            toast("Access granted — opening your copy");
-            const a = document.createElement("a");
-            a.href = window.ownerDownload.url();
-            a.target = "_blank";
-            a.rel = "noopener";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        } else {
-            toast("Wrong access code");
-        }
+    if (btn) btn.addEventListener('click', () => {
+        toast("Opening your copy");
+        const a = document.createElement("a");
+        a.href = window.ownerDownload.url();
+        a.target = "_blank";
+        a.rel = "noopener";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     });
 }
 
