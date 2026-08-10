@@ -109,28 +109,49 @@
         </div>
     </div>
     <div id="envelopeOverlay" class="envelope-overlay">
-        <div class="envelope">
-            <div class="envelope-top"></div>
-            <div class="envelope-flap"></div>
-            <div class="envelope-letter">
-                <div class="envelope-letter-inner">
-                    <h3 id="envelopeTitle">Request a Game</h3>
-                    <p id="envelopeSub">Tell us what you want and we'll try to add it!</p>
-                    <label for="reqName" class="sr-only">Your name</label>
-                    <input type="text" id="reqName" placeholder="Your name (optional)">
-                    <label for="reqGame" class="sr-only">Game name</label>
-                    <input type="text" id="reqGame" placeholder="Game name *">
-                    <label for="reqLink" class="sr-only">Game link</label>
-                    <input type="text" id="reqLink" placeholder="Link to the game (optional)">
-                    <label for="reqNotes" class="sr-only">Notes</label>
-                    <textarea id="reqNotes" rows="3" placeholder="Anything else? (optional)"></textarea>
-                    <button id="envelopeSend" class="envelope-send">Send Request &#x2709;</button>
-                    <div id="envelopeStatus" class="envelope-status"></div>
+        <div class="envw-widget" id="envwWidget">
+                <div class="envw-scene">
+                    <div class="envw-fling" id="envwFling">
+                        <div class="envw-envelope" id="envwEnvelope">
+                            <div class="envw-paper" id="envwPaper">
+                                <form class="envw-form" id="envwForm" novalidate>
+                                    <p class="envw-salute">Dear Game Master,</p>
+
+                                    <label class="envw-field" id="envwGameField">
+                                        <span>Game name</span>
+                                        <input type="text" id="envwGame" placeholder="e.g. Subway Surfers" autocomplete="off">
+                                    </label>
+
+                                    <label class="envw-field">
+                                        <span>Link <em>(optional)</em></span>
+                                        <input type="url" id="envwLink" placeholder="https://…" autocomplete="off">
+                                    </label>
+
+                                    <label class="envw-field envw-field-grow">
+                                        <span>Why you want it <em>(optional)</em></span>
+                                        <textarea id="envwNotes" placeholder="Anything else we should know…"></textarea>
+                                    </label>
+
+                                    <p class="envw-signoff">— hoping it gets added</p>
+                                </form>
+                            </div>
+                            <div class="envw-flap"></div>
+                            <div class="envw-seal" id="envwSeal"></div>
+                            <div class="envw-body"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="envw-controls">
+                    <button type="button" class="envw-btn" id="envwBtn">Seal &amp; Send</button>
+                    <p class="envw-sent" id="envwSent" hidden>
+                        <strong>Sent ✓</strong>
+                        <button type="button" class="envw-reset" id="envwReset">request another</button>
+                    </p>
+                    <p class="envw-status" id="envwStatus" aria-live="polite"></p>
                 </div>
             </div>
-            <div class="envelope-bottom"></div>
-            <div class="envelope-close" title="Close">&times;</div>
-        </div>
+        <div class="envelope-close" title="Close">&times;</div>
     </div>
     <footer>
         <div class="footer-links">

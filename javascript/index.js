@@ -903,31 +903,25 @@ function openZoneFromInfo(id) {
     }
 }
 
-function envelopeEscapeHtml(text) {
-    return String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-
 function openRequestEnvelope(mode, zone) {
     const overlay = document.getElementById('envelopeOverlay');
-    const envelope = overlay.querySelector('.envelope');
-    document.getElementById('envelopeTitle').textContent = mode === 'report' ? 'Report a Problem' : 'Request a Game';
-    document.getElementById('envelopeSub').textContent = mode === 'report'
-        ? 'Something wrong with ' + (zone ? zone.name : 'this game') + '? Let us know!'
-        : 'Tell us what you want and we\'ll try to add it!';
-    document.getElementById('reqName').value = '';
-    document.getElementById('reqGame').value = zone ? zone.name : '';
-    document.getElementById('reqLink').value = '';
-    document.getElementById('reqNotes').value = '';
-    document.getElementById('envelopeStatus').textContent = '';
-    document.getElementById('envelopeStatus').className = 'envelope-status';
-    document.getElementById('envelopeSend').disabled = false;
-    document.getElementById('envelopeSend').textContent = mode === 'report' ? 'Send Report &#x2709;' : 'Send Request &#x2709;';
-    envelope.dataset.mode = mode;
-    envelope.dataset.zoneId = zone ? zone.id : '';
-    envelope.classList.remove('opened');
+    if (!overlay) return;
+    const widget = document.getElementById('envwWidget');
+    if (widget) {
+        widget.dataset.mode = mode || 'request';
+        widget.dataset.zoneId = zone && zone.id != null ? String(zone.id) : '';
+    }
+    const resetBtn = document.getElementById('envwReset');
+    if (resetBtn) resetBtn.click();
+    const gameInput = document.getElementById('envwGame');
+    const btn = document.getElementById('envwBtn');
+    if (btn) btn.textContent = (mode === 'report') ? 'Send Report' : 'Seal & Send';
+    if (mode === 'report' && zone && gameInput) gameInput.value = zone.name;
     overlay.classList.add('open');
-    setTimeout(() => envelope.classList.add('opened'), 50);
-    setTimeout(() => document.getElementById('reqGame').focus(), 600);
+    setTimeout(() => {
+        const input = document.getElementById('envwGame');
+        if (input) input.focus();
+    }, 60);
 }
 
 function closeEnvelope() {
@@ -935,56 +929,128 @@ function closeEnvelope() {
     if (overlay) overlay.classList.remove('open');
 }
 
-async function sendEnvelopeRequest() {
-    const name = document.getElementById('reqName').value.trim();
-    const game = document.getElementById('reqGame').value.trim();
-    const link = document.getElementById('reqLink').value.trim();
-    const notes = document.getElementById('reqNotes').value.trim();
-    const envelope = document.querySelector('#envelopeOverlay .envelope');
-    const mode = envelope.dataset.mode || 'request';
-    const status = document.getElementById('envelopeStatus');
-    const sendBtn = document.getElementById('envelopeSend');
+document.addEventListener('game-request:sent', (event) => {
+    const detail = event.detail || {};
+    const widget = document.getElementById('envwWidget');
+    const mode = widget ? widget.dataset.mode : 'request';
+    const zoneId = widget ? widget.dataset.zoneId : '';
+    const zoneName = mode === 'report' && zoneId ? ((zones.find(z => z.id === Number(zoneId)) || {}).name || '') : '';
+    const content = (mode === 'report' ? 'REPORT' : 'REQUEST') + ' | game: ' + (detail.game || '') + (detail.link ? ' | link: ' + detail.link : '') + (detail.notes ? ' | notes: ' + detail.notes : '') + (zoneName ? ' | zone: ' + zoneName : '');
+    fetch(REQUEST_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'TheFreedomZone', content: content })
+    }).then(res => {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        toast('Request sent - thanks!');
+    }).catch(() => {
+        toast("Couldn't send - check connection.");
+    });
+});
+
+(function(){
+  // ---- silence the benign "ResizeObserver loop completed with undelivered
+  // notifications" browser warning so it doesn't surface as an uncaught error
+  // in your site's console. It never indicates broken functionality here —
+  // this widget doesn't use ResizeObserver itself, but hosts that auto-size
+  // an iframe around it sometimes trip this Chrome/Safari quirk.
+  window.addEventListener('error', function (e) {
+    if (e && typeof e.message === 'string' && e.message.includes('ResizeObserver loop')) {
+      e.stopImmediatePropagation();
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+    }
+  });
+
+  var widget    = document.getElementById('envwWidget');
+  var fling     = document.getElementById('envwFling');
+  var envelope  = document.getElementById('envwEnvelope');
+  var paper     = document.getElementById('envwPaper');
+  var gameField = document.getElementById('envwGameField');
+  var gameInput = document.getElementById('envwGame');
+  var linkInput = document.getElementById('envwLink');
+  var notesInput= document.getElementById('envwNotes');
+  var btn       = document.getElementById('envwBtn');
+  var sentMsg   = document.getElementById('envwSent');
+  var status    = document.getElementById('envwStatus');
+  var sealed    = false;
+
+  function runSequence(steps){
+    var t = 0;
+    steps.forEach(function(step){
+      t += step[0];
+      setTimeout(step[1], t);
+    });
+  }
+
+  btn.addEventListener('click', function(){
+    if (sealed) return;
+
+    var game  = gameInput.value.trim();
+    var link  = linkInput.value.trim();
+    var notes = notesInput.value.trim();
 
     if (!game) {
-        status.textContent = "Please enter a game name.";
-        status.className = 'envelope-status err';
-        return;
+      gameField.classList.add('envw-invalid');
+      paper.classList.remove('envw-shake');
+      // restart the shake animation
+      void paper.offsetWidth;
+      paper.classList.add('envw-shake');
+      status.textContent = 'Enter a game name first.';
+      status.classList.add('envw-error');
+      gameInput.focus();
+      return;
     }
 
-    sendBtn.disabled = true;
-    sendBtn.textContent = 'Sending...';
+    gameField.classList.remove('envw-invalid');
+    status.classList.remove('envw-error');
 
-    const zoneName = mode === 'report' && envelope.dataset.zoneId ? (zones.find(z => z.id === Number(envelope.dataset.zoneId)) || {}).name : '';
-    const content = (mode === 'report' ? 'REPORT' : 'REQUEST') + ' | game: ' + game + (link ? ' | link: ' + link : '') + (notes ? ' | notes: ' + notes : '') + (name ? ' | by: ' + name : '') + (zoneName ? ' | zone: ' + zoneName : '');
+    sealed = true;
+    gameInput.disabled = true;
+    linkInput.disabled = true;
+    notesInput.disabled = true;
+    btn.disabled = true;
+    status.textContent = 'Sealing your request…';
 
-    try {
-        const response = await fetch(REQUEST_WEBHOOK, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: 'TheFreedomZone',
-                content: content
-            })
-        });
-        if (response.ok) {
-            status.textContent = mode === 'report' ? 'Report sent — thanks!' : 'Request sent — we\'ll check it out!';
-            status.className = 'envelope-status ok';
-            sendBtn.disabled = false;
-            sendBtn.textContent = mode === 'report' ? 'Send Report &#x2709;' : 'Send Request &#x2709;';
-            document.getElementById('reqGame').value = '';
-            document.getElementById('reqLink').value = '';
-            document.getElementById('reqNotes').value = '';
-            setTimeout(closeEnvelope, 1500);
-        } else {
-            throw new Error('HTTP ' + response.status);
-        }
-    } catch (error) {
-        status.textContent = "Couldn't send — check connection and try again.";
-        status.className = 'envelope-status err';
-        sendBtn.disabled = false;
-        sendBtn.textContent = mode === 'report' ? 'Send Report &#x2709;' : 'Send Request &#x2709;';
-    }
-}
+    envelope.classList.add('envw-sealing');
+
+    runSequence([
+      [560, function(){ envelope.classList.add('envw-stamped'); status.textContent = 'Stamping the seal…'; }],
+      [420, function(){ btn.classList.add('envw-hide'); fling.classList.add('envw-windup'); }],
+      [160, function(){
+        fling.classList.remove('envw-windup');
+        fling.classList.add('envw-thrown');
+        status.textContent = 'Sending…';
+      }],
+      [650, function(){
+        sentMsg.hidden = false;
+        status.textContent = 'Sent.';
+        widget.dispatchEvent(new CustomEvent('game-request:sent', {
+          bubbles: true,
+          detail: { game: game, link: link, notes: notes }
+        }));
+      }]
+    ]);
+  });
+
+  document.getElementById('envwReset').addEventListener('click', function(){
+    sealed = false;
+    gameInput.disabled = false;
+    linkInput.disabled = false;
+    notesInput.disabled = false;
+    gameInput.value = '';
+    linkInput.value = '';
+    notesInput.value = '';
+    gameField.classList.remove('envw-invalid');
+    btn.disabled = false;
+    btn.classList.remove('envw-hide');
+    envelope.classList.remove('envw-sealing', 'envw-stamped');
+    fling.classList.remove('envw-thrown', 'envw-windup');
+    sentMsg.hidden = true;
+    status.textContent = '';
+    status.classList.remove('envw-error');
+    gameInput.focus();
+  });
+})();
 
 function showContact() {
     document.getElementById('popupTitle').textContent = "Contact";
@@ -1084,14 +1150,6 @@ if (envelopeOverlay) {
             closeEnvelope();
         }
     });
-    document.getElementById('envelopeSend').addEventListener('click', sendEnvelopeRequest);
-    const envelopeEnter = (event) => {
-        if (event.key === 'Enter' && event.target.id === 'reqGame') {
-            event.preventDefault();
-            sendEnvelopeRequest();
-        }
-    };
-    document.getElementById('reqGame').addEventListener('keydown', envelopeEnter);
 }
 document.addEventListener('keydown', (event) => {
     const viewerOpen = document.getElementById('zoneViewer').classList.contains('open');
