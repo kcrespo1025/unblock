@@ -35,14 +35,17 @@
                     <option value="name">Name</option>
                     <option value="id">ID (Date)</option>
                     <option value="popular">Popular</option>
+                    <option value="plays">My Plays</option>
                 </select>
             </div>
             <div class="control-buttons">
+                <button id="continueZone" title="Continue playing" aria-label="Continue playing" style="display:none;">&#x25B6; Continue</button>
                 <button id="randomZone" title="Random zone" aria-label="Random zone">&#x1F3B2;</button>
                 <span id="zoneCount" class="zone-count" title="Total zones">0</span>
                 <button id="settings">Settings</button>
             </div>
         </div>
+        <div id="tagBar" class="tag-bar" style="display:none;"></div>
     </header>
 
     <main>
@@ -84,6 +87,7 @@
                 <button id="zoneCopy" title="Copy link to this zone" aria-label="Copy link">&#x1F4CE;</button>
                 <button id="zoneExternal" title="Open in a new tab" aria-label="Open in new tab">&#x1F517;</button>
                 <button id="zoneFullscreen" title="Toggle fullscreen" aria-label="Toggle fullscreen">&#x26F6;</button>
+                <button id="zoneReport" title="Report a problem" aria-label="Report a problem">&#x26A0;</button>
                 <button id="zoneClose" title="Close" aria-label="Close viewer">&#x00D7;</button>
             </div>
         </div>
@@ -104,8 +108,33 @@
             </div>
         </div>
     </div>
+    <div id="envelopeOverlay" class="envelope-overlay">
+        <div class="envelope">
+            <div class="envelope-top"></div>
+            <div class="envelope-flap"></div>
+            <div class="envelope-letter">
+                <div class="envelope-letter-inner">
+                    <h3 id="envelopeTitle">Request a Game</h3>
+                    <p id="envelopeSub">Tell us what you want and we'll try to add it!</p>
+                    <label for="reqName" class="sr-only">Your name</label>
+                    <input type="text" id="reqName" placeholder="Your name (optional)">
+                    <label for="reqGame" class="sr-only">Game name</label>
+                    <input type="text" id="reqGame" placeholder="Game name *">
+                    <label for="reqLink" class="sr-only">Game link</label>
+                    <input type="text" id="reqLink" placeholder="Link to the game (optional)">
+                    <label for="reqNotes" class="sr-only">Notes</label>
+                    <textarea id="reqNotes" rows="3" placeholder="Anything else? (optional)"></textarea>
+                    <button id="envelopeSend" class="envelope-send">Send Request &#x2709;</button>
+                    <div id="envelopeStatus" class="envelope-status"></div>
+                </div>
+            </div>
+            <div class="envelope-bottom"></div>
+            <div class="envelope-close" title="Close">&times;</div>
+        </div>
+    </div>
     <footer>
         <div class="footer-links">
+            <a href="#" onclick="openRequestEnvelope('request'); return false;">Request a Game</a>
             <a href="#" onclick="showContact(); return false;">Contact</a>
             <a href="#" onclick="loadPrivacy(); return false;">Privacy Policy</a>
             <a href="javascript:saveData()">Export Data</a>

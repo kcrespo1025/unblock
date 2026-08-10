@@ -8,6 +8,8 @@ const OFFICIAL_URL = "https://daily-light-bible.fisherrivar32.chatgpt.site/";
 const RECENT_KEY = "fz_recent";
 const FAVS_KEY = "fz_favs";
 const THEME_KEY = "fz_dark";
+const LAST_KEY = "fz_last_zone";
+const REQUEST_WEBHOOK = "https://discord.com/api/webhooks/1536403279687192698/i3RoGHwk1I_9_BgzWAA3PIJ5lYgfpKWa2ZwiWCDQ1q8luzYnLMwIwgFXXsqZaGkv3-1r";
 let zones = [];
 let popularityData = {};
 const featuredContainer = document.getElementById('featuredZones');
@@ -24,6 +26,8 @@ let zonesLoaded = false;
 let viewerLoadToken = 0;
 let lastFilterQuery = "";
 let filterTimer = null;
+let activeTag = "";
+let playsData = {};
 
 function loadFromStorage(key, fallback) {
     try {
@@ -50,6 +54,9 @@ async function listZones() {
         }
         zones = data.zones;
         zonesLoaded = true;
+        loadPlaysData();
+        renderTagBar();
+        updateContinueButton();
         sortZones();
         renderRecent();
         renderFavorites();
@@ -115,12 +122,24 @@ function updateZoneCount() {
     if (el) el.textContent = zones.length;
 }
 
+function loadPlaysData() {
+    playsData = {};
+    let recent = loadFromStorage(RECENT_KEY, []);
+    if (!Array.isArray(recent)) recent = [];
+    recent.forEach(e => {
+        if (e && e.file && e.file.id != null) {
+            playsData[e.file.id] = Number(e.plays) || 1;
+        }
+    });
+}
+
 function sortZones() {
     const sortBy = sortOptions.value;
     const compare = {
         name: (a, b) => (a.name || "").localeCompare(b.name || ""),
         id: (a, b) => a.id - b.id,
-        popular: (a, b) => (popularityData[b.id] || 0) - (popularityData[a.id] || 0)
+        popular: (a, b) => (popularityData[b.id] || 0) - (popularityData[a.id] || 0),
+        plays: (a, b) => (playsData[b.id] || 0) - (playsData[a.id] || 0)
     }[sortBy] || (() => 0);
     zones.sort((a, b) => {
         const pinnedA = a && a.id === -1 ? -1 : 0;
@@ -131,18 +150,85 @@ function sortZones() {
     if (featured.length) displayFeaturedZones(featured);
     const mustCheck = zones.filter(z => z && z.mustCheck);
     if (mustCheck.length) displayMustCheckZones(mustCheck);
-    if (searchBar.value.trim()) {
+    if (searchBar.value.trim() || activeTag) {
         lastFilterQuery = "";
-        filterZones();
+        applyFilterImmediate();
     } else {
         displayZones(zones);
     }
 }
 
+function renderTagBar() {
+    const bar = document.getElementById('tagBar');
+    if (!bar) return;
+    const tagCounts = {};
+    zones.forEach(z => {
+        if (z && Array.isArray(z.tags)) {
+            z.tags.forEach(t => { tagCounts[t] = (tagCounts[t] || 0) + 1; });
+        }
+    });
+    const tags = Object.keys(tagCounts).sort((a, b) => tagCounts[b] - tagCounts[a]);
+    if (tags.length === 0) {
+        bar.style.display = 'none';
+        bar.innerHTML = '';
+        return;
+    }
+    bar.style.display = 'flex';
+    const clear = document.createElement('button');
+    clear.className = 'tag-chip clear' + (activeTag === "" ? ' active' : '');
+    clear.textContent = 'All';
+    clear.onclick = () => {
+        activeTag = "";
+        clear.classList.add('active');
+        bar.querySelectorAll('.tag-chip:not(.clear)').forEach(c => c.classList.remove('active'));
+        applyFilterImmediate();
+    };
+    bar.appendChild(clear);
+    tags.forEach(tag => {
+        const chip = document.createElement('button');
+        chip.className = 'tag-chip' + (activeTag === tag ? ' active' : '');
+        chip.textContent = tag + ' (' + tagCounts[tag] + ')';
+        chip.onclick = () => {
+            activeTag = activeTag === tag ? "" : tag;
+            bar.querySelectorAll('.tag-chip').forEach(c => c.classList.remove('active'));
+            if (activeTag === "") {
+                clear.classList.add('active');
+            } else {
+                chip.classList.add('active');
+            }
+            applyFilterImmediate();
+        };
+        bar.appendChild(chip);
+    });
+}
+
+function applyFilterImmediate() {
+    if (!zonesLoaded) return;
+    const query = (searchBar.value || "").trim().toLowerCase();
+    lastFilterQuery = query;
+    let filtered = zones;
+    if (activeTag) {
+        filtered = filtered.filter(z => z && Array.isArray(z.tags) && z.tags.includes(activeTag));
+    }
+    if (query) {
+        filtered = filtered.filter(z => z && z.name && z.name.toLowerCase().includes(query));
+    }
+    const searching = query.length !== 0 || activeTag !== "";
+    ["featuredZonesWrapper", "mustCheckZonesWrapper", "openSourceProgramsWrapper", "recentZonesWrapper", "favZonesWrapper"].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (searching) {
+            el.removeAttribute("open");
+        } else {
+            el.setAttribute("open", "");
+        }
+    });
+    displayZones(filtered);
+}
+
 function createZoneItem(file) {
     const url = getZoneURL(file);
     const isFav = favs.has(file.id);
-
     const zoneItem = document.createElement("a");
     zoneItem.className = "zone-item";
     zoneItem.href = url;
@@ -193,6 +279,18 @@ function createZoneItem(file) {
         toggleFav(file);
     };
     zoneItem.appendChild(favButton);
+
+    const infoButton = document.createElement("button");
+    infoButton.className = "zone-info";
+    infoButton.type = "button";
+    infoButton.title = "Info";
+    infoButton.textContent = "i";
+    infoButton.onclick = (event) => {
+        event.stopPropagation();
+        showZoneInfo(file);
+    };
+    zoneItem.appendChild(infoButton);
+
     const button = document.createElement("button");
     button.textContent = (file.name || "Zone") + (file.external ? " ↗" : "");
     button.onclick = (event) => {
@@ -379,6 +477,8 @@ function toggleFav(file) {
 
 async function openZone(file) {
     const url = getZoneURL(file);
+    saveToStorage(LAST_KEY, { id: file.id, name: file.name, url: file.url });
+    updateContinueButton();
     if (!file.url) {
         loadZoneHtml(file);
         return;
@@ -630,26 +730,7 @@ function getZoneURL(file) {
 
 function filterZones() {
     clearTimeout(filterTimer);
-    filterTimer = setTimeout(applyFilter, 150);
-}
-
-function applyFilter() {
-    if (!zonesLoaded) return;
-    const query = (searchBar.value || "").trim().toLowerCase();
-    if (query === lastFilterQuery) return;
-    lastFilterQuery = query;
-    const filteredZones = zones.filter(zone => zone && zone.name && zone.name.toLowerCase().includes(query));
-    const searching = query.length !== 0;
-    ["featuredZonesWrapper", "mustCheckZonesWrapper", "openSourceProgramsWrapper", "recentZonesWrapper", "favZonesWrapper"].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        if (searching) {
-            el.removeAttribute("open");
-        } else {
-            el.setAttribute("open", "");
-        }
-    });
-    displayZones(filteredZones);
+    filterTimer = setTimeout(applyFilterImmediate, 150);
 }
 
 function showLoading(show) {
@@ -736,11 +817,31 @@ function cloakName(string) {
     document.title = string;
 }
 
+function cloakPreset(name, icon) {
+    cloakName(name);
+    cloakIcon(icon);
+    document.getElementById('tab-cloak-title').value = name;
+    document.getElementById('tab-cloak-icon').value = icon;
+    toast("Cloaked as \"" + name + "\"");
+}
+
 function tabCloak() {
     closePopup();
     document.getElementById('popupTitle').textContent = "Tab Cloak";
     const popupBody = document.getElementById('popupBody');
+    const presets = [
+        { name: 'Google', icon: 'https://www.google.com/favicon.ico' },
+        { name: 'Google Docs', icon: 'https://ssl.gstatic.com/docs/documents/images/kix-favicon-2023a.ico' },
+        { name: 'Google Classroom', icon: 'https://ssl.gstatic.com/classroom/favicon.png' },
+        { name: 'Canvas', icon: 'https://du11hjcvx0uqb.cloudfront.net/dist/images/favicon-e10d657a73.ico' },
+        { name: 'Khan Academy', icon: 'https://cdn.kastatic.org/images/favicon.ico' },
+        { name: 'Wikipedia', icon: 'https://en.wikipedia.org/static/favicon/wikipedia.ico' },
+        { name: 'Moodle', icon: 'https://moodle.org/favicon.ico' }
+    ];
     popupBody.innerHTML = `
+        <div class="zone-desc-tags" style="margin-bottom:10px">
+            ${presets.map(p => '<span class="cloak-preset" onclick="cloakPreset(' + JSON.stringify(p.name) + ',' + JSON.stringify(p.icon) + ')">' + p.name + '</span>').join('')}
+        </div>
         <label for="tab-cloak-title" style="font-weight: bold;">Set Tab Title:</label><br>
         <input type="text" id="tab-cloak-title" placeholder="Enter new tab name..." oninput="cloakName(this.value)">
         <br><br><br>
@@ -776,6 +877,113 @@ if (settings) {
         popupBody.contentEditable = false;
         document.getElementById('popupOverlay').style.display = "flex";
     });
+}
+
+function showZoneInfo(file) {
+    if (!file) return;
+    document.getElementById('popupTitle').textContent = file.name || "Zone";
+    const popupBody = document.getElementById('popupBody');
+    const desc = file.desc || "No description yet.";
+    const tags = (file.tags && file.tags.length) ? file.tags : [];
+    popupBody.innerHTML = `
+        <p class="zone-desc">${escapeHtml(desc)}</p>
+        ${file.author ? '<p class="zone-desc" style="opacity:0.75">By ' + escapeHtml(file.author) + '</p>' : ''}
+        ${tags.length ? '<div class="zone-desc-tags">' + tags.map(t => '<span>' + escapeHtml(t) + '</span>').join('') + '</div>' : ''}
+        <button class="settings-button" style="margin-top:14px" onclick="openZoneFromInfo(${file.id})">Play</button>
+    `;
+    popupBody.contentEditable = false;
+    document.getElementById('popupOverlay').style.display = "flex";
+}
+
+function openZoneFromInfo(id) {
+    const zone = zones.find(z => z.id === id);
+    if (zone) {
+        closePopup();
+        openZone(zone);
+    }
+}
+
+function envelopeEscapeHtml(text) {
+    return String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function openRequestEnvelope(mode, zone) {
+    const overlay = document.getElementById('envelopeOverlay');
+    const envelope = overlay.querySelector('.envelope');
+    document.getElementById('envelopeTitle').textContent = mode === 'report' ? 'Report a Problem' : 'Request a Game';
+    document.getElementById('envelopeSub').textContent = mode === 'report'
+        ? 'Something wrong with ' + (zone ? zone.name : 'this game') + '? Let us know!'
+        : 'Tell us what you want and we\'ll try to add it!';
+    document.getElementById('reqName').value = '';
+    document.getElementById('reqGame').value = zone ? zone.name : '';
+    document.getElementById('reqLink').value = '';
+    document.getElementById('reqNotes').value = '';
+    document.getElementById('envelopeStatus').textContent = '';
+    document.getElementById('envelopeStatus').className = 'envelope-status';
+    document.getElementById('envelopeSend').disabled = false;
+    document.getElementById('envelopeSend').textContent = mode === 'report' ? 'Send Report &#x2709;' : 'Send Request &#x2709;';
+    envelope.dataset.mode = mode;
+    envelope.dataset.zoneId = zone ? zone.id : '';
+    envelope.classList.remove('opened');
+    overlay.classList.add('open');
+    setTimeout(() => envelope.classList.add('opened'), 50);
+    setTimeout(() => document.getElementById('reqGame').focus(), 600);
+}
+
+function closeEnvelope() {
+    const overlay = document.getElementById('envelopeOverlay');
+    if (overlay) overlay.classList.remove('open');
+}
+
+async function sendEnvelopeRequest() {
+    const name = document.getElementById('reqName').value.trim();
+    const game = document.getElementById('reqGame').value.trim();
+    const link = document.getElementById('reqLink').value.trim();
+    const notes = document.getElementById('reqNotes').value.trim();
+    const envelope = document.querySelector('#envelopeOverlay .envelope');
+    const mode = envelope.dataset.mode || 'request';
+    const status = document.getElementById('envelopeStatus');
+    const sendBtn = document.getElementById('envelopeSend');
+
+    if (!game) {
+        status.textContent = "Please enter a game name.";
+        status.className = 'envelope-status err';
+        return;
+    }
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending...';
+
+    const zoneName = mode === 'report' && envelope.dataset.zoneId ? (zones.find(z => z.id === Number(envelope.dataset.zoneId)) || {}).name : '';
+    const content = (mode === 'report' ? 'REPORT' : 'REQUEST') + ' | game: ' + game + (link ? ' | link: ' + link : '') + (notes ? ' | notes: ' + notes : '') + (name ? ' | by: ' + name : '') + (zoneName ? ' | zone: ' + zoneName : '');
+
+    try {
+        const response = await fetch(REQUEST_WEBHOOK, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: 'TheFreedomZone',
+                content: content
+            })
+        });
+        if (response.ok) {
+            status.textContent = mode === 'report' ? 'Report sent — thanks!' : 'Request sent — we\'ll check it out!';
+            status.className = 'envelope-status ok';
+            sendBtn.disabled = false;
+            sendBtn.textContent = mode === 'report' ? 'Send Report &#x2709;' : 'Send Request &#x2709;';
+            document.getElementById('reqGame').value = '';
+            document.getElementById('reqLink').value = '';
+            document.getElementById('reqNotes').value = '';
+            setTimeout(closeEnvelope, 1500);
+        } else {
+            throw new Error('HTTP ' + response.status);
+        }
+    } catch (error) {
+        status.textContent = "Couldn't send — check connection and try again.";
+        status.className = 'envelope-status err';
+        sendBtn.disabled = false;
+        sendBtn.textContent = mode === 'report' ? 'Send Report &#x2709;' : 'Send Request &#x2709;';
+    }
 }
 
 function showContact() {
@@ -835,13 +1043,56 @@ const zoneBackBtn = document.getElementById('zoneBack');
 const zoneFullscreenBtn = document.getElementById('zoneFullscreen');
 const zoneCopyBtn = document.getElementById('zoneCopy');
 const zoneExternalBtn = document.getElementById('zoneExternal');
+const zoneReportBtn = document.getElementById('zoneReport');
 const randomZoneBtn = document.getElementById('randomZone');
+const continueZoneBtn = document.getElementById('continueZone');
 if (zoneCloseBtn) zoneCloseBtn.addEventListener('click', closeViewer);
 if (zoneBackBtn) zoneBackBtn.addEventListener('click', goBack);
 if (zoneFullscreenBtn) zoneFullscreenBtn.addEventListener('click', toggleViewerFullscreen);
 if (zoneCopyBtn) zoneCopyBtn.addEventListener('click', copyZoneLink);
 if (zoneExternalBtn) zoneExternalBtn.addEventListener('click', openExternalTab);
 if (randomZoneBtn) randomZoneBtn.addEventListener('click', openRandomZone);
+if (zoneReportBtn) zoneReportBtn.addEventListener('click', () => {
+    openRequestEnvelope('report', currentZone);
+});
+if (continueZoneBtn) continueZoneBtn.addEventListener('click', continuePlaying);
+
+function updateContinueButton() {
+    const btn = document.getElementById('continueZone');
+    if (!btn) return;
+    const last = loadFromStorage(LAST_KEY, null);
+    if (last && last.name) {
+        btn.style.display = 'inline-block';
+        btn.title = 'Continue playing: ' + last.name;
+    } else {
+        btn.style.display = 'none';
+    }
+}
+
+function continuePlaying() {
+    const last = loadFromStorage(LAST_KEY, null);
+    if (!last) return;
+    const zone = zones.find(z => z.id === last.id) ||
+        (last.url ? { name: last.name, url: last.url, cover: last.cover } : null);
+    if (zone) openZone(zone);
+}
+
+const envelopeOverlay = document.getElementById('envelopeOverlay');
+if (envelopeOverlay) {
+    envelopeOverlay.addEventListener('click', (event) => {
+        if (event.target === envelopeOverlay || event.target.classList.contains('envelope-close')) {
+            closeEnvelope();
+        }
+    });
+    document.getElementById('envelopeSend').addEventListener('click', sendEnvelopeRequest);
+    const envelopeEnter = (event) => {
+        if (event.key === 'Enter' && event.target.id === 'reqGame') {
+            event.preventDefault();
+            sendEnvelopeRequest();
+        }
+    };
+    document.getElementById('reqGame').addEventListener('keydown', envelopeEnter);
+}
 document.addEventListener('keydown', (event) => {
     const viewerOpen = document.getElementById('zoneViewer').classList.contains('open');
     if (event.key === 'Escape' && viewerOpen) {
@@ -856,6 +1107,26 @@ document.addEventListener('keydown', (event) => {
     if (event.key === '/' && !isTyping && document.activeElement !== searchBar) {
         event.preventDefault();
         searchBar.focus();
+    }
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (isTyping || viewerOpen) return;
+    const k = (event.key || "").toLowerCase();
+    if (k === 'r') {
+        event.preventDefault();
+        openRandomZone();
+    } else if (k === 'c') {
+        event.preventDefault();
+        continuePlaying();
+    } else if (k === 'f') {
+        event.preventDefault();
+        const favEl = document.getElementById('favZonesWrapper');
+        if (favEl) {
+            favEl.setAttribute("open", "");
+            favEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    } else if (k === 't') {
+        event.preventDefault();
+        openRequestEnvelope('request');
     }
 });
 applySavedTheme();

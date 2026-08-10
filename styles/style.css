@@ -620,3 +620,318 @@ details summary:hover {
     gap: 20px;
     margin-top: 1rem;
 }
+
+/* ---- tag filter bar ---- */
+.tag-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    padding: 0.5rem 0;
+    margin-top: 0.5rem;
+}
+
+.tag-chip {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    border: 1px solid var(--card-border);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.25s;
+}
+
+.tag-chip:hover {
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+}
+
+.tag-chip.active {
+    background-color: var(--accent-green);
+    color: var(--accent-black);
+    border-color: var(--accent-green);
+    font-weight: bold;
+}
+
+.tag-chip.clear {
+    border-color: var(--accent-red);
+    color: var(--accent-red);
+}
+
+/* ---- continue button ---- */
+#continueZone {
+    background-color: transparent;
+    border: 1px solid var(--accent-green);
+    color: var(--accent-green);
+    font-size: 0.95rem;
+    cursor: pointer;
+    padding: 0.5rem 0.8rem;
+    border-radius: 4px;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+#continueZone:hover {
+    background-color: var(--accent-green);
+    color: var(--accent-black);
+}
+
+/* ---- envelope overlay ---- */
+.envelope-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 4000;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.envelope-overlay.open {
+    display: flex;
+}
+
+.envelope {
+    position: relative;
+    width: min(420px, 92vw);
+    height: 300px;
+    perspective: 1200px;
+    cursor: pointer;
+}
+
+.envelope-top {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    background-color: var(--card-border);
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+
+.envelope-bottom {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 26px;
+    background-color: var(--card-border);
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+.envelope-flap {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 210px solid transparent;
+    border-right: 210px solid transparent;
+    border-top: 130px solid #444;
+    transform-origin: top center;
+    transition: transform 0.5s ease;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.envelope.opened .envelope-flap {
+    transform: translateX(-50%) rotateX(180deg);
+    z-index: 1;
+}
+
+.envelope-letter {
+    position: absolute;
+    top: 0;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    transform: translateY(20px);
+    opacity: 0;
+    transition: transform 0.45s ease 0.1s, opacity 0.4s ease 0.1s;
+    overflow-y: auto;
+    z-index: 2;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.envelope.opened .envelope-letter {
+    transform: translateY(-40px);
+    opacity: 1;
+}
+
+.envelope-letter-inner {
+    padding: 18px;
+    color: var(--text-color);
+}
+
+.envelope-letter-inner h3 {
+    margin: 0 0 4px;
+    color: var(--accent-green);
+    font-size: 1.3rem;
+}
+
+.envelope-letter-inner p {
+    margin: 0 0 14px;
+    font-size: 0.85rem;
+    color: var(--text-color);
+    opacity: 0.8;
+}
+
+.envelope-letter-inner input,
+.envelope-letter-inner textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.55rem;
+    margin-bottom: 0.6rem;
+    border: 1px solid var(--card-border);
+    border-radius: 4px;
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    font-size: 15px;
+    font-family: inherit;
+}
+
+.envelope-letter-inner input:focus,
+.envelope-letter-inner textarea:focus {
+    outline: none;
+    border-color: var(--accent-green);
+    box-shadow: 0 0 8px var(--shadow);
+}
+
+.envelope-send {
+    width: 100%;
+    padding: 0.7rem;
+    background-color: var(--accent-green);
+    color: var(--accent-black);
+    border: none;
+    border-radius: 4px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.25s;
+}
+
+.envelope-send:hover {
+    filter: brightness(1.15);
+}
+
+.envelope-send:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.envelope-status {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    text-align: center;
+    min-height: 1.2em;
+}
+
+.envelope-status.ok {
+    color: var(--accent-green);
+}
+
+.envelope-status.err {
+    color: var(--accent-red);
+}
+
+.envelope-close {
+    position: absolute;
+    top: -14px;
+    right: -14px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background-color: var(--accent-red);
+    color: #fff;
+    border: none;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* ---- zone info (description) ---- */
+.zone-info {
+    position: absolute;
+    bottom: 62px;
+    left: 8px;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: var(--accent-green);
+    border: 1px solid var(--card-border);
+    font-size: 0.95rem;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: all 0.25s;
+}
+
+.zone-info:hover {
+    background-color: var(--accent-green);
+    color: var(--accent-black);
+}
+
+.zone-desc {
+    color: var(--text-color);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin: 0 0 8px;
+}
+
+.zone-desc-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.zone-desc-tags span {
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--accent-green);
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 0.75rem;
+}
+
+.cloak-preset {
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--accent-green);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.25s;
+    display: inline-block;
+}
+
+.cloak-preset:hover {
+    background-color: var(--accent-green);
+    color: var(--accent-black);
+    border-color: var(--accent-green);
+}
+
+/* ---- report button ---- */
+#zoneReport {
+    color: #ffcc00;
+    border-color: #ffcc00;
+}
