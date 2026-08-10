@@ -708,6 +708,7 @@ details summary:hover {
     --ring:#a97c4a;
     --error:#b23a3a;
     box-sizing:border-box;
+    width: min(460px, 92vw);
     max-width:460px;
     margin:0 auto;
     padding:34px 26px 28px;
