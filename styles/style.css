@@ -687,6 +687,7 @@ details summary:hover {
     align-items: center;
     justify-content: center;
     padding: 20px;
+    overflow-y: auto;
 }
 
 .envelope-overlay.open {
@@ -707,9 +708,9 @@ details summary:hover {
     --ring:#a97c4a;
     --error:#b23a3a;
     box-sizing:border-box;
-    max-width:360px;
+    max-width:460px;
     margin:0 auto;
-    padding:28px 20px 24px;
+    padding:34px 26px 28px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     color:var(--ink);
     text-align:center;
@@ -723,7 +724,7 @@ details summary:hover {
 
 .envw-scene{
     width:100%;
-    max-width:320px;
+    max-width:420px;
     margin:0 auto;
     perspective:1200px;
 }
@@ -804,23 +805,23 @@ details summary:hover {
 
 .envw-form{
     height:100%;
-    padding:12px 14px 10px;
+    padding:16px 18px 12px;
     display:flex;
     flex-direction:column;
-    gap:8px;
+    gap:10px;
 }
 .envw-salute{
     margin:0 0 2px;
     font-family: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
-    font-size:13px;
+    font-size:16px;
     color:var(--ink-soft);
     font-style:italic;
 }
 .envw-field{
     display:flex;
     flex-direction:column;
-    gap:2px;
-    font-size:11px;
+    gap:3px;
+    font-size:13px;
 }
 .envw-field span{
     color:var(--ink-soft);
@@ -833,9 +834,9 @@ details summary:hover {
     border-bottom:1px dashed rgba(169,124,74,.55);
     background:transparent;
     font-family: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
-    font-size:14px;
+    font-size:17px;
     color:var(--ink);
-    padding:2px 1px 4px;
+    padding:3px 1px 5px;
     outline:none;
 }
 .envw-field input:focus,
@@ -849,14 +850,14 @@ details summary:hover {
     flex:1;
     resize:none;
     border-bottom:none;
-    line-height:20px;
+    line-height:24px;
 }
 .envw-field.envw-invalid input{ border-bottom-color:var(--error); }
 .envw-signoff{
     margin:0;
     text-align:right;
     font-family: Georgia, serif;
-    font-size:11px;
+    font-size:13px;
     font-style:italic;
     color:var(--ink-soft);
 }
@@ -918,7 +919,7 @@ details summary:hover {
 .envw-seal::after{
     content:"✦";
     color: rgba(255,235,225,.85);
-    font-size: 11px;
+    font-size: 13px;
     transform: translateY(-1px);
 }
 .envw-envelope.envw-stamped .envw-seal{
@@ -926,15 +927,15 @@ details summary:hover {
 }
 
 .envw-controls{
-    margin-top:20px;
-    min-height:44px;
+    margin-top:24px;
+    min-height:52px;
 }
 .envw-btn{
     appearance:none;
     border:0;
     cursor:pointer;
-    padding:11px 26px;
-    font-size:14px;
+    padding:14px 34px;
+    font-size:17px;
     font-weight:600;
     letter-spacing:.02em;
     color:var(--cream);
@@ -950,15 +951,15 @@ details summary:hover {
 .envw-btn.envw-hide{ opacity:0; pointer-events:none; transform:translateY(4px); }
 
 .envw-status{
-    font-size:12px;
-    min-height:16px;
-    margin:8px 0 0;
+    font-size:14px;
+    min-height:20px;
+    margin:10px 0 0;
     color:var(--ink-soft);
 }
 .envw-status.envw-error{ color:var(--error); }
 
 .envw-sent{
-    font-size:14px;
+    font-size:16px;
     color:var(--ink-soft);
 }
 .envw-sent strong{ color:var(--ink); }
@@ -975,15 +976,15 @@ details summary:hover {
 
 .envelope-close {
     position: absolute;
-    top: -14px;
-    right: -14px;
-    width: 34px;
-    height: 34px;
+    top: -16px;
+    right: -16px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background-color: var(--accent-red);
     color: #fff;
     border: none;
-    font-size: 1.2rem;
+    font-size: 1.4rem;
     line-height: 1;
     cursor: pointer;
     z-index: 5;
