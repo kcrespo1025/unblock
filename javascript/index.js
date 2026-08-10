@@ -764,8 +764,6 @@ if (settings) {
         <button class="settings-button" onclick="tabCloak()">Tab Cloak</button>
         <br><br>
         <button class="settings-button" id="saverToggle">Resource Saver: ${saverOn ? "ON" : "OFF"}</button>
-        <br><br>
-        <button class="settings-button" onclick="ownerGate()">Get Your Own Copy</button>
         <br>
         `;
         const saverBtn = document.getElementById('saverToggle');
@@ -777,28 +775,6 @@ if (settings) {
         });
         popupBody.contentEditable = false;
         document.getElementById('popupOverlay').style.display = "flex";
-    });
-}
-
-function ownerGate() {
-    document.getElementById('popupTitle').textContent = "Get Your Own Copy";
-    const popupBody = document.getElementById('popupBody');
-    popupBody.innerHTML = `
-        <p style="margin:0 0 12px">This index is free — grab your own copy.</p>
-        <button class="settings-button" id="ownerPassOk">Download Copy</button>
-    `;
-    popupBody.contentEditable = false;
-    document.getElementById('popupOverlay').style.display = "flex";
-    const btn = document.getElementById('ownerPassOk');
-    if (btn) btn.addEventListener('click', () => {
-        toast("Opening your copy");
-        const a = document.createElement("a");
-        a.href = window.ownerDownload.url();
-        a.target = "_blank";
-        a.rel = "noopener";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
     });
 }
 

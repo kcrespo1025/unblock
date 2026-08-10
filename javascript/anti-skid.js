@@ -4,7 +4,6 @@
     "use strict";
 
     // Replace with whatever copy you actually hand out (zip, repo archive, etc.)
-    const COPY_URL = "https://github.com/kcrespo1025/unblock/archive/refs/heads/main.zip";
 
     // ---- keyboard / context-menu deterrents ----
     document.addEventListener("contextmenu", function (e) {
@@ -56,13 +55,6 @@
             try { localStorage.setItem(SAVER_KEY, on ? "1" : "0"); } catch (e) { }
             return on;
         }
-    };
-
-    // ---- free download of the owner's copy ----
-    window.ownerDownload = {
-        unlocked: function () { return true; },
-        tryPasscode: function () { return Promise.resolve(true); },
-        url: function () { return COPY_URL; }
     };
 
     // inject the devtools warning overlay + watermark (idempotent)
